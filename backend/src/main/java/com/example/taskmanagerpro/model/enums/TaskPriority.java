@@ -1,4 +1,7 @@
 package com.example.taskmanagerpro.model.enums;
 
-public class TaskPriority {
+public enum TaskPriority {
+    LOW,
+    MEDIUM,
+    HIGH
 }

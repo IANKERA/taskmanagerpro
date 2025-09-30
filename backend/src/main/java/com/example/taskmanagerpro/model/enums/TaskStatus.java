@@ -1,4 +1,7 @@
 package com.example.taskmanagerpro.model.enums;
 
-public class TaskStatus {
+public enum TaskStatus {
+    PENDING,
+    IN_PROGRESS,
+    DONE
 }

@@ -7,6 +7,9 @@ import com.example.taskmanagerpro.model.enums.TaskPriority;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
 import com.example.taskmanagerpro.repository.TaskRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.*;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -118,4 +121,56 @@ public class TaskService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
+
+    public Page<TaskDTO> getTasks(String status, String priority, Long userId,
+                                  int page, int size, String[] sort) {
+
+        Sort.Direction direction = Sort.Direction.ASC;
+        String sortBy = "id";
+
+        if (sort.length == 2) {
+            sortBy = sort[0];
+            direction = sort[1].equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+
+        return taskRepository.findAllWithFilters(status, priority, userId, pageable)
+                .map(this::convertToDTO);
+    }
+
+
+
+    public boolean canModifyTask(Task task) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String currentUsername;
+
+        if (principal instanceof UserDetails) {
+            currentUsername = ((UserDetails) principal).getUsername();
+        } else {
+            currentUsername = principal.toString();
+        }
+
+        // Admin can modify any task
+        if (task.getUser() != null && currentUsername.equals(task.getUser().getUsername())) {
+            return true;
+        }
+
+        // Check for ROLE_ADMIN
+        return SecurityContextHolder.getContext().getAuthentication()
+                .getAuthorities()
+                .stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    public Task updateTask(Task task, TaskDTO dto) {
+        if (dto.getTitle() != null) task.setTitle(dto.getTitle());
+        if (dto.getDescription() != null) task.setDescription(dto.getDescription());
+        if (dto.getStatus() != null) task.setStatus(dto.getStatus());
+        if (dto.getPriority() != null) task.setPriority(dto.getPriority());
+        if (dto.getDueDate() != null) task.setDueDate(dto.getDueDate().atStartOfDay());
+        return taskRepository.save(task);
+    }
+
+
 }

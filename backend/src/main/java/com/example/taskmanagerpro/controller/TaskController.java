@@ -1,8 +1,10 @@
 package com.example.taskmanagerpro.controller;
 
 import com.example.taskmanagerpro.dto.TaskDTO;
+import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.enums.TaskPriority;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
+import org.springframework.data.domain.Page;
 import com.example.taskmanagerpro.service.TaskService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,12 +21,6 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    // Get all tasks
-    @GetMapping
-    public List<TaskDTO> getAllTasks() {
-        return taskService.convertToDTOList(taskService.getAllTasks());
-    }
-
     // Get task by ID
     @GetMapping("/{id}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
@@ -38,24 +34,6 @@ public class TaskController {
     @PostMapping
     public TaskDTO createTask(@RequestBody TaskDTO taskDTO) {
         return taskService.convertToDTO(taskService.saveTask(taskService.convertToEntity(taskDTO)));
-    }
-
-    // Update task
-    @PutMapping("/{id}")
-    public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id, @RequestBody TaskDTO taskDTO) {
-        return taskService.getTaskById(id)
-                .map(existing -> {
-                    taskDTO.setId(id); // ensure ID is set
-                    return ResponseEntity.ok(taskService.convertToDTO(taskService.saveTask(taskService.convertToEntity(taskDTO))));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    // Delete task
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-        taskService.deleteTask(id);
-        return ResponseEntity.noContent().build();
     }
 
     // Get tasks by status
@@ -75,4 +53,69 @@ public class TaskController {
     public List<TaskDTO> getTasksByUser(@PathVariable Long userId) {
         return taskService.convertToDTOList(taskService.getTasksByUserId(userId));
     }
+
+    @GetMapping
+    public ResponseEntity<Page<TaskDTO>> getTasks(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String[] sort) {
+
+        Page<TaskDTO> tasks = taskService.getTasks(status, priority, userId, page, size, sort);
+        return ResponseEntity.ok(tasks);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateTask(@PathVariable Long id, @RequestBody TaskDTO dto) {
+        Task task = taskService.getTaskById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        if (!taskService.canModifyTask(task)) {
+            return ResponseEntity.status(403).body("You are not allowed to modify this task");
+        }
+
+        Task updatedTask = taskService.updateTask(task, dto);
+        return ResponseEntity.ok(taskService.convertToDTO(updatedTask));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteTask(@PathVariable Long id) {
+        Task task = taskService.getTaskById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        if (!taskService.canModifyTask(task)) {
+            return ResponseEntity.status(403).body("You are not allowed to delete this task");
+        }
+
+        taskService.deleteTask(id);
+        return ResponseEntity.ok("Task deleted successfully");
+    }
+
 }
+
+
+//    // Update task
+//    @PutMapping("/{id}")
+//    public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id, @RequestBody TaskDTO taskDTO) {
+//        return taskService.getTaskById(id)
+//                .map(existing -> {
+//                    taskDTO.setId(id); // ensure ID is set
+//                    return ResponseEntity.ok(taskService.convertToDTO(taskService.saveTask(taskService.convertToEntity(taskDTO))));
+//                })
+//                .orElse(ResponseEntity.notFound().build());
+//    }
+
+//    // Delete task
+//    @DeleteMapping("/{id}")
+//    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
+//        taskService.deleteTask(id);
+//        return ResponseEntity.noContent().build();
+//    }
+//
+//    //Get all tasks
+//    @GetMapping
+//    public List<TaskDTO> getAllTasks() {
+//        return taskService.convertToDTOList(taskService.getAllTasks());
+//    }

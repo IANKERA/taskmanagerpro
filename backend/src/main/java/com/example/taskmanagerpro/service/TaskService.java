@@ -64,12 +64,25 @@ public class TaskService {
         task.setId(dto.getId());
         task.setTitle(dto.getTitle());
         task.setDescription(dto.getDescription());
+
+        // Use DTO value if provided, otherwise Task entity default (MEDIUM) will apply
+        if (dto.getPriority() != null) {
+            task.setPriority(dto.getPriority());
+        }
+
         task.setStatus(dto.getStatus());
-        task.setPriority(dto.getPriority());
-        task.setDueDate(dto.getDueDate().atStartOfDay());
+
+        if (dto.getDueDate() != null) {
+            task.setDueDate(dto.getDueDate().atStartOfDay());
+        } else {
+            task.setDueDate(null); // or keep as null if no default
+        }
+
         task.setUser(getUserById(dto.getUserId()).orElse(null));
+
         return task;
     }
+
 
     public Optional<User> getUserById(Long id) {
         return userService.getUserById(id);
@@ -77,17 +90,28 @@ public class TaskService {
 
     // Convert Task -> TaskDTO
     public TaskDTO convertToDTO(Task task) {
-        return TaskDTO.builder()
-                .id(task.getId())
-                .title(task.getTitle())
-                .description(task.getDescription())
-                .status(task.getStatus())
-                .priority(task.getPriority())
-                .dueDate(LocalDate.from(task.getDueDate()))
-                .userId(task.getUser() != null ? task.getUser().getId() : null)
-                .username(task.getUser() != null ? task.getUser().getUsername() : null)
-                .build();
+        TaskDTO dto = new TaskDTO();
+        dto.setId(task.getId());
+        dto.setTitle(task.getTitle());
+        dto.setDescription(task.getDescription());
+        dto.setStatus(task.getStatus());
+        dto.setPriority(task.getPriority());
+
+        if (task.getDueDate() != null) {
+            dto.setDueDate(task.getDueDate().toLocalDate());
+        } else {
+            dto.setDueDate(null);
+        }
+
+        if (task.getUser() != null) {
+            dto.setUserId(task.getUser().getId());
+        } else {
+            dto.setUserId(null);
+        }
+
+        return dto;
     }
+
 
     public List<TaskDTO> convertToDTOList(List<Task> tasks) {
         return tasks.stream()

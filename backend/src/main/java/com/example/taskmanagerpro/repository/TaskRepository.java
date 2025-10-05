@@ -28,15 +28,19 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByUserId(Long userId);
 
 
+
     @Query("""
         SELECT t FROM Task t 
         WHERE (:status IS NULL OR t.status = :status)
           AND (:priority IS NULL OR t.priority = :priority)
           AND (:userId IS NULL OR t.user.id = :userId)
+          AND (:keyword IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
         """)
         Page<Task> findAllWithFilters(@Param("status") String status,
                                       @Param("priority") String priority,
                                       @Param("userId") Long userId,
+                                      @Param("keyword") String keyword,
                                       Pageable pageable);
     }
 

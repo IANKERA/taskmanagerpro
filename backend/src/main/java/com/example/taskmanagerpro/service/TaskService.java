@@ -67,24 +67,22 @@ public class TaskService {
         task.setId(dto.getId());
         task.setTitle(dto.getTitle());
         task.setDescription(dto.getDescription());
-
-        // Use DTO value if provided, otherwise Task entity default (MEDIUM) will apply
-        if (dto.getPriority() != null) {
-            task.setPriority(dto.getPriority());
-        }
-
         task.setStatus(dto.getStatus());
+        task.setPriority(dto.getPriority() != null ? dto.getPriority() : TaskPriority.MEDIUM);
+        task.setDueDate(dto.getDueDate() != null ? dto.getDueDate().atStartOfDay() : null);
 
-        if (dto.getDueDate() != null) {
-            task.setDueDate(dto.getDueDate().atStartOfDay());
-        } else {
-            task.setDueDate(null); // or keep as null if no default
+        // Assign user dynamically
+        User user = null;
+        if (dto.getUserId() != null) {
+            user = userService.getUserById(dto.getUserId()).orElse(null);
+        } else if (dto.getUsername() != null) {
+            user = userService.getUserByUsername(dto.getUsername()).orElse(null);
         }
-
-        task.setUser(getUserById(dto.getUserId()).orElse(null));
+        task.setUser(user);
 
         return task;
     }
+
 
 
     public Optional<User> getUserById(Long id) {
@@ -122,7 +120,7 @@ public class TaskService {
                 .collect(Collectors.toList());
     }
 
-    public Page<TaskDTO> getTasks(String status, String priority, Long userId,
+    public Page<TaskDTO> getTasks(String status, String priority, Long userId,String keyword,
                                   int page, int size, String[] sort) {
 
         Sort.Direction direction = Sort.Direction.ASC;
@@ -135,7 +133,7 @@ public class TaskService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
-        return taskRepository.findAllWithFilters(status, priority, userId, pageable)
+        return taskRepository.findAllWithFilters(status, priority, userId,keyword, pageable)
                 .map(this::convertToDTO);
     }
 

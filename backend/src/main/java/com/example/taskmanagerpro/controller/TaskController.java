@@ -59,11 +59,12 @@ public class TaskController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String priority,
             @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) {
 
-        Page<TaskDTO> tasks = taskService.getTasks(status, priority, userId, page, size, sort);
+        Page<TaskDTO> tasks = taskService.getTasks(status, priority, userId, keyword,page, size, sort);
         return ResponseEntity.ok(tasks);
     }
 

@@ -133,7 +133,27 @@ public class TaskService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
-        return taskRepository.findAllWithFilters(status, priority, userId,keyword, pageable)
+        if (keyword == null) {
+            keyword = "";
+        }
+
+        TaskStatus taskStatus = null;
+        TaskPriority taskPriority = null;
+
+        if (status != null) {
+            try {
+                taskStatus = TaskStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        if (priority != null) {
+            try {
+                taskPriority = TaskPriority.valueOf(priority.toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+
+        return taskRepository.findAllWithFilters(taskStatus, taskPriority, userId,keyword, pageable)
                 .map(this::convertToDTO);
     }
 

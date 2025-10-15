@@ -116,6 +116,7 @@ public class UserController {
     }
 
 
+
     public static class SelfPasswordResetRequest {
         private String oldPassword;
         private String newPassword;

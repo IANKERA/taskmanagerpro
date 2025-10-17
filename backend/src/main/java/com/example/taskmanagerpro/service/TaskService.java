@@ -71,14 +71,20 @@ public class TaskService {
         task.setPriority(dto.getPriority() != null ? dto.getPriority() : TaskPriority.MEDIUM);
         task.setDueDate(dto.getDueDate() != null ? dto.getDueDate().atStartOfDay() : null);
 
-        // Assign user dynamically
-        User user = null;
-        if (dto.getUserId() != null) {
-            user = userService.getUserById(dto.getUserId()).orElse(null);
-        } else if (dto.getUsername() != null) {
-            user = userService.getUserByUsername(dto.getUsername()).orElse(null);
+        if (isCurrentUserAdmin()) {
+            // Admin can assign any user
+            User user = null;
+            if (dto.getUserId() != null) {
+                user = userService.getUserById(dto.getUserId()).orElse(null);
+            } else if (dto.getUsername() != null) {
+                user = userService.getUserByUsername(dto.getUsername()).orElse(null);
+            }
+            task.setUser(user);
+        } else {
+            // Normal user → always assign to themselves
+            User currentUser = userService.getUserByUsername(getCurrentUsername()).orElse(null);
+            task.setUser(currentUser);
         }
-        task.setUser(user);
 
         return task;
     }
@@ -120,9 +126,10 @@ public class TaskService {
                 .collect(Collectors.toList());
     }
 
-    public Page<TaskDTO> getTasks(String status, String priority, Long userId,String keyword,
+    public Page<TaskDTO> getTasks(String status, String priority, Long userId, String keyword,
                                   int page, int size, String[] sort) {
 
+        // Sort handling
         Sort.Direction direction = Sort.Direction.ASC;
         String sortBy = "id";
 
@@ -133,53 +140,76 @@ public class TaskService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
-        if (keyword == null) {
-            keyword = "";
-        }
-
+        // Convert String to Enum
         TaskStatus taskStatus = null;
         TaskPriority taskPriority = null;
 
         if (status != null) {
-            try {
-                taskStatus = TaskStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException ignored) {}
+            try { taskStatus = TaskStatus.valueOf(status.toUpperCase()); } catch (IllegalArgumentException ignored) {}
         }
 
         if (priority != null) {
-            try {
-                taskPriority = TaskPriority.valueOf(priority.toUpperCase());
-            } catch (IllegalArgumentException ignored) {}
+            try { taskPriority = TaskPriority.valueOf(priority.toUpperCase()); } catch (IllegalArgumentException ignored) {}
         }
 
+        // If user is **NOT** admin, force userId = currentUserId
+        if (!isCurrentUserAdmin()) {
+            userId = getCurrentUserId();
+        }
 
-        return taskRepository.findAllWithFilters(taskStatus, taskPriority, userId,keyword, pageable)
+        //  Empty keyword → treat as null
+        if (keyword != null && keyword.isBlank()) {
+            keyword = null;
+        }
+
+        return taskRepository.findAllWithFilters(taskStatus, taskPriority, userId, keyword, pageable)
                 .map(this::convertToDTO);
     }
 
-
-
-    public boolean canModifyTask(Task task) {
+    private String getCurrentUsername() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String currentUsername;
-
         if (principal instanceof UserDetails) {
-            currentUsername = ((UserDetails) principal).getUsername();
-        } else {
-            currentUsername = principal.toString();
+            return ((UserDetails) principal).getUsername();
         }
+        return principal.toString();
+    }
 
-        // Admin can modify any task
-        if (task.getUser() != null && currentUsername.equals(task.getUser().getUsername())) {
-            return true;
-        }
+    private Long getCurrentUserId() {
+        return userService.findByUsername(getCurrentUsername())
+                .map(User::getId)
+                .orElse(null);
+    }
 
-        // Check for ROLE_ADMIN
+    private boolean isCurrentUserAdmin() {
         return SecurityContextHolder.getContext().getAuthentication()
                 .getAuthorities()
                 .stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
     }
+
+    public boolean canViewTask(Task task) {
+        if(isCurrentUserAdmin()) return true;
+
+        String currentUsername = getCurrentUsername();
+        return  task.getUser() != null && currentUsername.equals(task.getUser().getUsername());
+    }
+
+    public boolean canModifyTask(Task task) {
+        // Admin can modify any task
+        if (isCurrentUserAdmin()) {
+            return true;
+        }
+
+        // Normal user can only modify own tasks
+        String currentUsername = getCurrentUsername();
+        return task.getUser() != null && currentUsername.equals(task.getUser().getUsername());
+    }
+
+    private Optional<User> getCurrentUser() {
+        return userService.getUserByUsername(getCurrentUsername());
+    }
+
+
 
     public Task updateTask(Task task, TaskDTO dto) {
         if (dto.getTitle() != null) task.setTitle(dto.getTitle());

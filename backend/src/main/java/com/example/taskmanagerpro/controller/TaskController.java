@@ -21,14 +21,18 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    // Get task by ID
     @GetMapping("/{id}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
         return taskService.getTaskById(id)
-                .map(taskService::convertToDTO)
-                .map(ResponseEntity::ok)
+                .map(task -> {
+                    if (!taskService.canViewTask(task)) {
+                        return ResponseEntity.status(403).build();
+                    }
+                    return ResponseEntity.ok(taskService.convertToDTO(task));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
+
 
     // Create new task
     @PostMapping

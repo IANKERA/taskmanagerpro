@@ -38,11 +38,11 @@ public class UserController {
     }
 
     // Create new user
-    @PostMapping
-    public UserDTO createUser(@RequestBody User user) {
-        User saved = userService.saveUser(user);
-        return Mapper.toUserDTO(saved);
-    }
+//    @PostMapping
+//    public UserDTO createUser(@RequestBody User user) {
+//        User saved = userService.saveUser(user);
+//        return Mapper.toUserDTO(saved);
+//    }
 
     // Update user
     @PutMapping("/{id}")

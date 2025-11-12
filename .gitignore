@@ -36,7 +36,6 @@ build/
 backend/target/
 frontend/node_modules/
 .idea/
-*.iml
 
 # Logs
 *.log
@@ -51,3 +50,16 @@ backend/src/main/resources/application.yml
 
 # Environment variables / secrets
 .env
+
+# Node
+node_modules/
+dist/
+
+# Vite
+*.local
+
+# Java / Maven
+*.class
+*.jar
+*.war
+.mvn/timing.log

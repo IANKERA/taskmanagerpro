@@ -2,6 +2,7 @@ package com.example.taskmanagerpro.service;
 
 import com.example.taskmanagerpro.dto.UserDTO;
 import com.example.taskmanagerpro.model.User;
+import com.example.taskmanagerpro.model.enums.Role;
 import com.example.taskmanagerpro.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -87,17 +88,7 @@ public class UserService {
         return userRepository.findByUsername(username);
     }
 
-    // Convert User entity to UserDTO
-    public UserDTO convertToDTO(User user) {
-        UserDTO dto = new UserDTO();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setRole(user.getRole());
-        if (user.getTasks() != null) {
-            dto.setTaskIds(user.getTasks().stream().map(task -> task.getId()).toList());
-        }
-        return dto;
-    }
+
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
     }

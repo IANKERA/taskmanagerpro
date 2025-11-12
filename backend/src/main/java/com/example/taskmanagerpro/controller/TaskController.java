@@ -23,7 +23,7 @@ public class TaskController {
 
     @GetMapping("/{id}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
-        return taskService.getTaskById(id)
+        return (ResponseEntity<TaskDTO>) taskService.getTaskById(id)
                 .map(task -> {
                     if (!taskService.canViewTask(task)) {
                         return ResponseEntity.status(403).build();

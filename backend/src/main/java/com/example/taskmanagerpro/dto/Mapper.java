@@ -10,6 +10,7 @@ public class Mapper {
 
     // User → UserDTO
     public static UserDTO toUserDTO(User user) {
+        if(user == null) return null;
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
@@ -26,6 +27,7 @@ public class Mapper {
 
     // Task → TaskDTO
     public static TaskDTO toTaskDTO(Task task) {
+        if(task == null) return null;
         TaskDTO dto = new TaskDTO();
         dto.setId(task.getId());
         dto.setTitle(task.getTitle());

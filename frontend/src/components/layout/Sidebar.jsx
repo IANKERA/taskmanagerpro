@@ -1,28 +1,31 @@
-// src/components/layout/Sidebar.jsx
 import { NavLink } from "react-router-dom";
 
 function Sidebar() {
-    const baseLinkClasses =
-        "w-full block text-left px-3 py-2 rounded-lg text-sm transition-colors";
+    const baseClasses =
+        "block px-4 py-2 rounded-md text-sm font-medium transition-all";
 
     return (
-        <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col">
-            <div className="h-16 flex items-center px-6 border-b border-slate-700">
-        <span className="text-xl font-bold text-emerald-400">
-          TaskManagerPro
-        </span>
+        <aside className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col shadow-sm">
+            
+            {/* Logo */}
+            <div className="h-16 flex items-center px-6 border-b border-slate-200">
+                <span className="text-xl font-semibold text-slate-900 tracking-tight">
+                    TaskManagerPro
+                </span>
             </div>
 
-            <nav className="flex-1 px-4 py-4 space-y-2">
+            {/* Nav */}
+            <nav className="flex-1 px-4 py-4 space-y-1">
+
                 <NavLink
                     to="/"
                     end
                     className={({ isActive }) =>
                         [
-                            baseLinkClasses,
+                            baseClasses,
                             isActive
-                                ? "bg-slate-800 text-slate-100 font-medium"
-                                : "text-slate-300 hover:bg-slate-800 hover:text-slate-100",
+                                ? "bg-slate-900 text-white shadow-sm"
+                                : "text-slate-700 hover:bg-slate-100",
                         ].join(" ")
                     }
                 >
@@ -33,10 +36,10 @@ function Sidebar() {
                     to="/tasks"
                     className={({ isActive }) =>
                         [
-                            baseLinkClasses,
+                            baseClasses,
                             isActive
-                                ? "bg-slate-800 text-slate-100 font-medium"
-                                : "text-slate-300 hover:bg-slate-800 hover:text-slate-100",
+                                ? "bg-slate-900 text-white shadow-sm"
+                                : "text-slate-700 hover:bg-slate-100",
                         ].join(" ")
                     }
                 >
@@ -47,10 +50,10 @@ function Sidebar() {
                     to="/teams"
                     className={({ isActive }) =>
                         [
-                            baseLinkClasses,
+                            baseClasses,
                             isActive
-                                ? "bg-slate-800 text-slate-100 font-medium"
-                                : "text-slate-300 hover:bg-slate-800 hover:text-slate-100",
+                                ? "bg-slate-900 text-white shadow-sm"
+                                : "text-slate-700 hover:bg-slate-100",
                         ].join(" ")
                     }
                 >
@@ -61,20 +64,22 @@ function Sidebar() {
                     to="/settings"
                     className={({ isActive }) =>
                         [
-                            baseLinkClasses,
+                            baseClasses,
                             isActive
-                                ? "bg-slate-800 text-slate-100 font-medium"
-                                : "text-slate-300 hover:bg-slate-800 hover:text-slate-100",
+                                ? "bg-slate-900 text-white shadow-sm"
+                                : "text-slate-700 hover:bg-slate-100",
                         ].join(" ")
                     }
                 >
                     Settings
                 </NavLink>
+
             </nav>
 
-            <div className="px-4 py-4 border-t border-slate-700 text-xs text-slate-400">
+            {/* Footer */}
+            <div className="px-4 py-4 border-t border-slate-200 text-xs text-slate-500">
                 Logged in as{" "}
-                <span className="font-semibold text-slate-200">Giannis</span>
+                <span className="font-semibold text-slate-800">Giannis</span>
             </div>
         </aside>
     );

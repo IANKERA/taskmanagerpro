@@ -1,28 +1,22 @@
-// src/components/layout/Topbar.jsx
-function Topbar({ title, subtitle }) {
+import { useAuth } from "../../context/AuthContext";
+
+export default function Topbar({ title, subtitle }) {
+    const { logout } = useAuth();
+
     return (
-        <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm">
+            
             <div>
-                <h1 className="text-lg font-semibold text-slate-800">
-                    {title}
-                </h1>
-                {subtitle && (
-                    <p className="text-xs text-slate-500">
-                        {subtitle}
-                    </p>
-                )}
+                <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+                <p className="text-sm text-slate-500">{subtitle}</p>
             </div>
 
-            <div className="flex items-center gap-4">
-                <button className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">
-                    New Task
-                </button>
-                <div className="w-8 h-8 rounded-full bg-emerald-400 text-slate-900 flex items-center justify-center text-sm font-bold">
-                    G
-                </div>
-            </div>
+            <button
+                onClick={logout}
+                className="px-4 py-2 rounded-md bg-slate-900 text-white text-sm hover:bg-slate-800 transition-all"
+            >
+                Logout
+            </button>
         </header>
     );
 }
-
-export default Topbar;

@@ -4,7 +4,7 @@ function CreateTask() {
     const [form, setForm] = useState({
         title: "",
         description: "",
-        status: "TODO",
+        status: "PENDING",
         priority: "MEDIUM",
         dueDate: "",
     });

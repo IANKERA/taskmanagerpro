@@ -3,25 +3,33 @@ import { createContext, useContext, useState, useEffect } from "react";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-    const [token, setToken] = useState(localStorage.getItem("token"));
+    const [token, setToken] = useState(() => localStorage.getItem("token"));
     const [user, setUser] = useState(null);
 
-    // Save token in memory + localStorage
+    // LOGIN → save token
     function login(token) {
         localStorage.setItem("token", token);
         setToken(token);
+
+        // For now: set dummy user
+        setUser({ username: "admin" });
     }
 
+    // LOGOUT → remove token + user
     function logout() {
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
     }
 
-    // TODO: fetch user info
+    // On app load: if token exists → setUser
     useEffect(() => {
-        if (!token) return;
-        // we can decode token here if needed
+        if (token) {
+            // later we will decode JWT
+            setUser({ username: "admin" });
+        } else {
+            setUser(null);
+        }
     }, [token]);
 
     return (

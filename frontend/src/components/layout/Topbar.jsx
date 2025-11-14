@@ -1,14 +1,16 @@
-
-function Topbar() {
+// src/components/layout/Topbar.jsx
+function Topbar({ title, subtitle }) {
     return (
         <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6">
             <div>
                 <h1 className="text-lg font-semibold text-slate-800">
-                    Dashboard
+                    {title}
                 </h1>
-                <p className="text-xs text-slate-500">
-                    Overview of your projects and tasks
-                </p>
+                {subtitle && (
+                    <p className="text-xs text-slate-500">
+                        {subtitle}
+                    </p>
+                )}
             </div>
 
             <div className="flex items-center gap-4">

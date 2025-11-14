@@ -1,34 +1,43 @@
 // src/pages/Dashboard.jsx
+import { useEffect, useState } from "react";
 import TaskCard from "../components/tasks/TaskCard";
-
-const mockTasks = [
-    {
-        id: 1,
-        title: "Implement user authentication (backend + frontend)",
-        status: "In Progress",
-        assignee: "Giannis",
-        priority: "High",
-        dueDate: "2025-11-20",
-    },
-    {
-        id: 2,
-        title: "Design database schema for projects & tasks",
-        status: "To Do",
-        assignee: "Giannis",
-        priority: "Medium",
-        dueDate: "2025-11-25",
-    },
-    {
-        id: 3,
-        title: "Create React layout for Task board",
-        status: "Done",
-        assignee: "Giannis",
-        priority: "Low",
-        dueDate: "2025-11-10",
-    },
-];
+import { fetchTasks } from "../api/tasksApi";
 
 function Dashboard() {
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        async function loadTasks() {
+            try {
+                setLoading(true);
+                setError("");
+
+                const data = await fetchTasks();
+
+                // 🔧 Adjust this mapping to match your backend's Task DTO shape
+                const normalized = data.map((task) => ({
+                    id: task.id,
+                    title: task.title || task.name || "Untitled task",
+                    status: task.status || "To Do",
+                    assignee: task.assignee?.username || task.assignee || "Unassigned",
+                    priority: task.priority || "Medium",
+                    dueDate: task.dueDate || "N/A",
+                }));
+
+                setTasks(normalized);
+            } catch (err) {
+                console.error("Failed to load tasks", err);
+                setError("Failed to load tasks. Please try again.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadTasks();
+    }, []);
+
     return (
         <div className="space-y-6">
             {/* Top section */}
@@ -41,17 +50,39 @@ function Dashboard() {
                 </p>
             </section>
 
-            {/* Task grid */}
-            <section>
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">
-                    Your tasks
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {mockTasks.map((task) => (
-                        <TaskCard key={task.id} {...task} />
-                    ))}
+            {/* Status messages */}
+            {loading && (
+                <div className="text-sm text-slate-500">
+                    Loading tasks...
                 </div>
-            </section>
+            )}
+
+            {error && !loading && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {error}
+                </div>
+            )}
+
+            {/* Tasks grid */}
+            {!loading && !error && (
+                <section>
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                        Your tasks
+                    </h3>
+
+                    {tasks.length === 0 ? (
+                        <p className="text-sm text-slate-500">
+                            No tasks found yet. Create your first task to get started.
+                        </p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {tasks.map((task) => (
+                                <TaskCard key={task.id} {...task} />
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
         </div>
     );
 }

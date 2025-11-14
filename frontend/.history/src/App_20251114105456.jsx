@@ -11,10 +11,11 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 function App() {
     return (
         <Routes>
-            {/* Public route */}
+
+            {/* Public route (no sidebar, no topbar) */}
             <Route path="/login" element={<Login />} />
 
-            {/* Protected routes inside the Layout */}
+            {/* Protected Layout (sidebar + topbar) */}
             <Route
                 path="/"
                 element={
@@ -25,10 +26,11 @@ function App() {
             >
                 <Route index element={<Dashboard />} />
                 <Route path="tasks" element={<MyTasks />} />
-                <Route path="create-task" element={<CreateTask />} />
+                <Route path="/create-task" element={<CreateTask />} />
                 <Route path="teams" element={<Teams />} />
                 <Route path="settings" element={<Settings />} />
             </Route>
+
         </Routes>
     );
 }

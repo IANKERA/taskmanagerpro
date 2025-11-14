@@ -64,21 +64,48 @@ public class TaskService {
     // Convert TaskDTO -> Task
     public Task convertToEntity(TaskDTO dto) {
         Task task = new Task();
-        task.setId(dto.getId());
+
+        // If we are updating (id exists)
+        if (dto.getId() != null) {
+            task = taskRepository.findById(dto.getId()).orElse(new Task());
+        }
+
+        // Basic fields
         task.setTitle(dto.getTitle());
         task.setDescription(dto.getDescription());
         task.setStatus(dto.getStatus());
         task.setPriority(dto.getPriority() != null ? dto.getPriority() : TaskPriority.MEDIUM);
-        task.setDueDate(dto.getDueDate() != null ? dto.getDueDate().atStartOfDay() : null);
 
-        // Assign user dynamically
-        User user = null;
-        if (dto.getUserId() != null) {
-            user = userService.getUserById(dto.getUserId()).orElse(null);
-        } else if (dto.getUsername() != null) {
-            user = userService.getUserByUsername(dto.getUsername()).orElse(null);
+        if (dto.getDueDate() != null) {
+            task.setDueDate(dto.getDueDate().atStartOfDay());
         }
-        task.setUser(user);
+
+
+        if (isCurrentUserAdmin()) {
+            // Admin can assign ANY user
+            User assignedUser = null;
+
+            if (dto.getUserId() != null) {
+                assignedUser = userService.getUserById(dto.getUserId()).orElse(null);
+            } else if (dto.getUsername() != null) {
+                assignedUser = userService.getUserByUsername(dto.getUsername()).orElse(null);
+            }
+
+            // If admin forgot to assign → default to admin
+            if (assignedUser == null) {
+                assignedUser = userService.getUserByUsername(getCurrentUsername()).orElse(null);
+            }
+
+            task.setUser(assignedUser);
+
+        } else {
+            // Normal user → assign task ALWAYS to themselves
+            User currentUser = userService
+                    .getUserByUsername(getCurrentUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            task.setUser(currentUser);
+        }
 
         return task;
     }
@@ -190,5 +217,28 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
+    private String getCurrentUsername() {
+        Object principal = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
 
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+        return principal.toString();
+    }
+
+    private Long getCurrentUserId() {
+        return userService.findByUsername(getCurrentUsername())
+                .map(User::getId)
+                .orElse(null);
+    }
+
+    private boolean isCurrentUserAdmin() {
+        return SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getAuthorities()
+                .stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    }
 }

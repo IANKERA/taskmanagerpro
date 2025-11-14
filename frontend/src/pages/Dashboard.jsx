@@ -1,7 +1,7 @@
-// src/pages/Dashboard.jsx
 import { useEffect, useState } from "react";
 import TaskCard from "../components/tasks/TaskCard";
 import { fetchTasks } from "../api/tasksApi";
+import { Link } from "react-router-dom";
 
 function Dashboard() {
     const [tasks, setTasks] = useState([]);
@@ -9,15 +9,14 @@ function Dashboard() {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        async function loadTasks() {
+        async function load() {
             try {
                 setLoading(true);
                 setError("");
 
                 const data = await fetchTasks();
 
-                // 🔧 Adjust this mapping to match your backend's Task DTO shape
-                const normalized = data.map((task) => ({
+                const normalized = data.content.map((task) => ({
                     id: task.id,
                     title: task.title || task.name || "Untitled task",
                     status: task.status || "To Do",
@@ -35,38 +34,48 @@ function Dashboard() {
             }
         }
 
-        loadTasks();
+        load();
     }, []);
 
     return (
-        <div className="space-y-6">
-            {/* Top section */}
-            <section className="flex flex-col gap-3">
-                <h2 className="text-lg font-semibold text-slate-800">
+        <div className="space-y-8">
+
+            {/* Header section */}
+            <section className="flex flex-col gap-1">
+                <h2 className="text-xl font-semibold text-slate-900">
                     Welcome back, Giannis 👋
                 </h2>
-                <p className="text-sm text-slate-500">
-                    Here’s a quick overview of your current work.
+                <p className="text-sm text-slate-600">
+                    Here’s a quick overview of your ongoing work.
                 </p>
             </section>
 
-            {/* Status messages */}
+            {/* Create Task button */}
+            <div className="flex justify-end">
+                <Link
+                    to="/create-task"
+                    className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800 transition-colors"
+                >
+                    + Create Task
+                </Link>
+            </div>
+
+            {/* Loading */}
             {loading && (
-                <div className="text-sm text-slate-500">
-                    Loading tasks...
-                </div>
+                <div className="text-sm text-slate-500">Loading tasks…</div>
             )}
 
+            {/* Error */}
             {error && !loading && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
                     {error}
                 </div>
             )}
 
-            {/* Tasks grid */}
+            {/* Tasks section */}
             {!loading && !error && (
-                <section>
-                    <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                <section className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-700">
                         Your tasks
                     </h3>
 
@@ -77,7 +86,13 @@ function Dashboard() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {tasks.map((task) => (
-                                <TaskCard key={task.id} {...task} />
+                                <TaskCard
+                                    key={task.id}
+                                    {...task}
+                                    onDelete={(deletedId) =>
+                                        setTasks((prev) => prev.filter((t) => t.id !== deletedId))
+                                    }
+                                />
                             ))}
                         </div>
                     )}

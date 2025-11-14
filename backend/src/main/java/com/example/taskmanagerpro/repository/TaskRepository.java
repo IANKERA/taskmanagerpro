@@ -15,27 +15,27 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    @Query("SELECT t FROM Task t JOIN FETCH t.user")
+    // Fetch all tasks with optional user (LEFT JOIN = allows user_id = null)
+    @Query("SELECT t FROM Task t LEFT JOIN FETCH t.user")
     List<Task> findAllWithUser();
 
-    @Query("SELECT t FROM Task t JOIN FETCH t.user WHERE t.id = :id")
+    // Fetch single task safely (LEFT JOIN avoids 'task not found' when user is null)
+    @Query("SELECT t FROM Task t LEFT JOIN FETCH t.user WHERE t.id = :id")
     Task findByIdWithUser(Long id);
 
-    List<Task> findByStatus(TaskStatus status);
 
-    List<Task> findByPriority(TaskPriority priority);
-
-    List<Task> findByUserId(Long userId);
-
-
+    // Filters for pagination
     @Query("""
     SELECT t FROM Task t
+    LEFT JOIN t.user u
     WHERE (:status IS NULL OR t.status = :status)
-        AND (:priority IS NULL OR t.priority = :priority)
-        AND (:userId IS NULL OR t.user.id = :userId)
-        AND (:keyword IS NULL 
-            OR LOWER(COALESCE(t.title, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(COALESCE(t.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%')))
+      AND (:priority IS NULL OR t.priority = :priority)
+      AND (:userId IS NULL OR (u IS NOT NULL AND u.id = :userId))
+      AND (
+            :keyword IS NULL 
+            OR LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(t.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          )
     """)
     Page<Task> findAllWithFilters(@Param("status") TaskStatus status,
                                   @Param("priority") TaskPriority priority,
@@ -44,5 +44,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
                                   Pageable pageable);
 
 
-}
+    List<Task> findByStatus(TaskStatus status);
 
+    List<Task> findByPriority(TaskPriority priority);
+
+    List<Task> findByUserId(Long userId);
+}

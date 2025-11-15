@@ -14,5 +14,5 @@ public class UserDTO {
     private Long id;
     private String username;
     private Role role;
-    private List<Long> taskIds; // only store task IDs, no recursion
+    private List<Long> taskIds; // only store task IDs
 }

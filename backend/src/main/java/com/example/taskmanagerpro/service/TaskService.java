@@ -1,5 +1,6 @@
 package com.example.taskmanagerpro.service;
 
+import com.example.taskmanagerpro.dto.Mapper;
 import com.example.taskmanagerpro.dto.TaskDTO;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.User;
@@ -26,12 +27,12 @@ public class TaskService {
         this.userService = userService;
     }
 
-    // Get all tasks with user eagerly fetched
+    // Get all tasks with user
     public List<Task> getAllTasks() {
         return taskRepository.findAllWithUser();
     }
 
-    // Get task by ID with user eagerly fetched
+    // Get task by ID with user
     public Optional<Task> getTaskById(Long id) {
         return Optional.ofNullable(taskRepository.findByIdWithUser(id));
     }
@@ -76,6 +77,7 @@ public class TaskService {
         task.setStatus(dto.getStatus());
         task.setPriority(dto.getPriority() != null ? dto.getPriority() : TaskPriority.MEDIUM);
 
+        //LocalDateTime if date exist
         if (dto.getDueDate() != null) {
             task.setDueDate(dto.getDueDate().atStartOfDay());
         }
@@ -91,7 +93,7 @@ public class TaskService {
                 assignedUser = userService.getUserByUsername(dto.getUsername()).orElse(null);
             }
 
-            // If admin forgot to assign → default to admin
+            // If admin forgot to assign Id or Username
             if (assignedUser == null) {
                 assignedUser = userService.getUserByUsername(getCurrentUsername()).orElse(null);
             }
@@ -99,7 +101,7 @@ public class TaskService {
             task.setUser(assignedUser);
 
         } else {
-            // Normal user → assign task ALWAYS to themselves
+            // Normal user
             User currentUser = userService
                     .getUserByUsername(getCurrentUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -116,36 +118,6 @@ public class TaskService {
         return userService.getUserById(id);
     }
 
-    // Convert Task -> TaskDTO
-    public TaskDTO convertToDTO(Task task) {
-        TaskDTO dto = new TaskDTO();
-        dto.setId(task.getId());
-        dto.setTitle(task.getTitle());
-        dto.setDescription(task.getDescription());
-        dto.setStatus(task.getStatus());
-        dto.setPriority(task.getPriority());
-
-        if (task.getDueDate() != null) {
-            dto.setDueDate(task.getDueDate().toLocalDate());
-        } else {
-            dto.setDueDate(null);
-        }
-
-        if (task.getUser() != null) {
-            dto.setUserId(task.getUser().getId());
-        } else {
-            dto.setUserId(null);
-        }
-
-        return dto;
-    }
-
-
-    public List<TaskDTO> convertToDTOList(List<Task> tasks) {
-        return tasks.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
 
     public Page<TaskDTO> getTasks(String status, String priority, Long userId,String keyword,
                                   int page, int size, String[] sort) {
@@ -181,12 +153,13 @@ public class TaskService {
 
 
         return taskRepository.findAllWithFilters(taskStatus, taskPriority, userId,keyword, pageable)
-                .map(this::convertToDTO);
+                .map(Mapper::toTaskDTO);
     }
 
 
 
     public boolean canModifyTask(Task task) {
+
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String currentUsername;
 
@@ -196,7 +169,7 @@ public class TaskService {
             currentUsername = principal.toString();
         }
 
-        // Admin can modify any task
+        // User is owner can modify  task
         if (task.getUser() != null && currentUsername.equals(task.getUser().getUsername())) {
             return true;
         }

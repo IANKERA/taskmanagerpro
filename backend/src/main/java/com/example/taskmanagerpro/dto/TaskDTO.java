@@ -20,6 +20,6 @@ public class TaskDTO {
     private TaskStatus status;
     private TaskPriority priority;
     private LocalDate dueDate;  // Only date, no time
-    private Long userId;         // reference to the user
-    private String username;     // optional for display
+    private Long userId;
+    private String username;
 }

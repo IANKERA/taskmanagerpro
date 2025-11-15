@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import MyTasks from "./pages/MyTasks";
+import Register from "./pages/Register";
 import Teams from "./pages/Teams";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
@@ -14,6 +15,7 @@ function App() {
 
             {/* Public route */}
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
             {/* Protected pages wrapped by Layout */}
             <Route
@@ -26,7 +28,6 @@ function App() {
             >
                 {/* Default route => Dashboard */}
                 <Route index element={<Dashboard />} />
-
                 <Route path="tasks" element={<MyTasks />} />
                 <Route path="create-task" element={<CreateTask />} />
                 <Route path="teams" element={<Teams />} />

@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { loginRequest } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link} from "react-router-dom";
 
 export default function Login() {
     const { login } = useAuth();
     const navigate = useNavigate();
-
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState(null);
@@ -57,6 +56,17 @@ export default function Login() {
                         Login
                     </button>
                 </form>
+                <div className="text-center mt-4">
+                    <p className="text-sm text-slate-600">
+                        New user?{" "}
+                        <Link
+                            to="/register"
+                            className="text-indigo-600 font-medium hover:underline"
+                        >
+                            Create an account
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );

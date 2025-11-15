@@ -15,11 +15,11 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    // Fetch all tasks with optional user (LEFT JOIN = allows user_id = null)
+    // Fetch all tasks with optional user
     @Query("SELECT t FROM Task t LEFT JOIN FETCH t.user")
     List<Task> findAllWithUser();
 
-    // Fetch single task safely (LEFT JOIN avoids 'task not found' when user is null)
+    // Fetch single task
     @Query("SELECT t FROM Task t LEFT JOIN FETCH t.user WHERE t.id = :id")
     Task findByIdWithUser(Long id);
 

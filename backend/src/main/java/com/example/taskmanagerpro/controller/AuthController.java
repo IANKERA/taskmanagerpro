@@ -22,17 +22,14 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    // User registration
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody User user) {
-        if (userService.usernameExists(user.getUsername())) {
-            return ResponseEntity.badRequest().body("Username already exists");
+    public ResponseEntity<?> register(@RequestBody AuthRequest request) {
+        try {
+            userService.registerUser(request.getUsername(), request.getPassword());
+            return ResponseEntity.ok("User registered successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-
-        // Encode password
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userService.saveUser(user);
-        return ResponseEntity.ok("User registered successfully");
     }
 
     // User login

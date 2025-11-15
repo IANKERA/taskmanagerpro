@@ -1,5 +1,6 @@
 package com.example.taskmanagerpro.controller;
 
+import com.example.taskmanagerpro.dto.Mapper;
 import com.example.taskmanagerpro.dto.TaskDTO;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.enums.TaskPriority;
@@ -26,7 +27,7 @@ public class TaskController {
     @GetMapping("/{id}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
         return taskService.getTaskById(id)
-                .map(taskService::convertToDTO)
+                .map(Mapper::toTaskDTO)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -34,25 +35,26 @@ public class TaskController {
     // Create new task
     @PostMapping
     public TaskDTO createTask(@RequestBody TaskDTO taskDTO) {
-        return taskService.convertToDTO(taskService.saveTask(taskService.convertToEntity(taskDTO)));
+        Task saved = taskService.saveTask(taskService.convertToEntity(taskDTO));
+        return Mapper.toTaskDTO(saved);
     }
 
     // Get tasks by status
     @GetMapping("/status/{status}")
     public List<TaskDTO> getTasksByStatus(@PathVariable TaskStatus status) {
-        return taskService.convertToDTOList(taskService.getTasksByStatus(status));
+        return Mapper.toTaskDTOList(taskService.getTasksByStatus(status));
     }
 
     // Get tasks by priority
     @GetMapping("/priority/{priority}")
     public List<TaskDTO> getTasksByPriority(@PathVariable TaskPriority priority) {
-        return taskService.convertToDTOList(taskService.getTasksByPriority(priority));
+        return Mapper.toTaskDTOList(taskService.getTasksByPriority(priority));
     }
 
     // Get tasks by user ID
     @GetMapping("/user/{userId}")
     public List<TaskDTO> getTasksByUser(@PathVariable Long userId) {
-        return taskService.convertToDTOList(taskService.getTasksByUserId(userId));
+        return Mapper.toTaskDTOList(taskService.getTasksByUserId(userId));
     }
 
     @GetMapping
@@ -65,7 +67,7 @@ public class TaskController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) {
 
-        Page<TaskDTO> tasks = taskService.getTasks(status, priority, userId, keyword,page, size, sort);
+        Page<TaskDTO> tasks = taskService.getTasks(status, priority, userId, keyword, page, size, sort);
         return ResponseEntity.ok(tasks);
     }
 
@@ -79,7 +81,7 @@ public class TaskController {
         }
 
         Task updatedTask = taskService.updateTask(task, dto);
-        return ResponseEntity.ok(taskService.convertToDTO(updatedTask));
+        return ResponseEntity.ok(Mapper.toTaskDTO(updatedTask));
     }
 
     @DeleteMapping("/{id}")
@@ -94,8 +96,8 @@ public class TaskController {
         taskService.deleteTask(id);
         return ResponseEntity.ok("Task deleted successfully");
     }
-
 }
+
 
 
 //    // Update task

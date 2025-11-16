@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { jwtDecode } from "jwt-decode";
 
 const AuthContext = createContext();
 
@@ -6,27 +7,33 @@ export function AuthProvider({ children }) {
     const [token, setToken] = useState(() => localStorage.getItem("token"));
     const [user, setUser] = useState(null);
 
-    // LOGIN → save token
+    // LOGIN → save token and decode
     function login(token) {
         localStorage.setItem("token", token);
         setToken(token);
 
-        // For now: set dummy user
-        setUser({ username: "admin" });
+        const decoded = jwtDecode(token);
+        setUser({
+            username: decoded.sub,
+            role: decoded.role
+        });
     }
 
-    // LOGOUT → remove token + user
+    // LOGOUT → clear
     function logout() {
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
     }
 
-    // On app load: if token exists → setUser
+    // When token changes → decode user
     useEffect(() => {
         if (token) {
-            // later we will decode JWT
-            setUser({ username: "admin" });
+            const decoded = jwtDecode(token);
+            setUser({
+                username: decoded.sub,
+                role: decoded.role
+            });
         } else {
             setUser(null);
         }

@@ -1,12 +1,14 @@
 import { deleteTask } from "../../api/tasksApi";
+import { Link } from "react-router-dom";
 
-function TaskCard({ id, title, status, priority, dueDate, assignee, onDelete }) {
+function TaskCard({ id, title, status, priority, dueDate, assignee, onDelete, onEdit }) {
+
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this task?")) return;
 
         try {
             await deleteTask(id);
-            onDelete(id); // ενημερώνει το parent component ότι διαγράφηκε
+            onDelete(id);
         } catch (err) {
             console.error("Delete failed:", err);
             alert("Could not delete task.");
@@ -29,12 +31,21 @@ function TaskCard({ id, title, status, priority, dueDate, assignee, onDelete }) 
                 Due: {dueDate || "No date"}
             </p>
 
-            <button
-                onClick={handleDelete}
-                className="mt-3 px-4 py-1.5 bg-red-600 text-white text-sm rounded shadow hover:bg-red-700"
-            >
-                Delete
-            </button>
+            <div className="flex gap-2 mt-3">
+                <button
+                    onClick={handleDelete}
+                    className="px-4 py-1.5 bg-red-600 text-white text-sm rounded shadow hover:bg-red-700"
+                >
+                    Delete
+                </button>
+
+                <Link
+                    to={`/edit-task/${id}`}
+                    className="mt-2 px-4 py-1.5 bg-blue-600 text-white text-sm rounded shadow hover:bg-blue-700 inline-block"
+                >
+                    Edit
+                </Link>
+            </div>
         </div>
     );
 }

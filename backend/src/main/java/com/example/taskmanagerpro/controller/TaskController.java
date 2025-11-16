@@ -97,29 +97,3 @@ public class TaskController {
         return ResponseEntity.ok("Task deleted successfully");
     }
 }
-
-
-
-//    // Update task
-//    @PutMapping("/{id}")
-//    public ResponseEntity<TaskDTO> updateTask(@PathVariable Long id, @RequestBody TaskDTO taskDTO) {
-//        return taskService.getTaskById(id)
-//                .map(existing -> {
-//                    taskDTO.setId(id); // ensure ID is set
-//                    return ResponseEntity.ok(taskService.convertToDTO(taskService.saveTask(taskService.convertToEntity(taskDTO))));
-//                })
-//                .orElse(ResponseEntity.notFound().build());
-//    }
-
-//    // Delete task
-//    @DeleteMapping("/{id}")
-//    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
-//        taskService.deleteTask(id);
-//        return ResponseEntity.noContent().build();
-//    }
-//
-//    //Get all tasks
-//    @GetMapping
-//    public List<TaskDTO> getAllTasks() {
-//        return taskService.convertToDTOList(taskService.getAllTasks());
-//    }

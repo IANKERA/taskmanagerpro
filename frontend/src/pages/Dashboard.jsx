@@ -2,11 +2,18 @@ import { useEffect, useState } from "react";
 import TaskCard from "../components/tasks/TaskCard";
 import { fetchTasks } from "../api/tasksApi";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
 
 function Dashboard() {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const { user } = useAuth();
+    const username = user?.username;
+    const [taskToEdit, setTaskToEdit] = useState(null);
+
+
 
     useEffect(() => {
         async function load() {
@@ -43,7 +50,7 @@ function Dashboard() {
             {/* Header section */}
             <section className="flex flex-col gap-1">
                 <h2 className="text-xl font-semibold text-slate-900">
-                    Welcome back, Giannis 👋
+                    Welcome back{username ? `, ${username}` : ""} 👋
                 </h2>
                 <p className="text-sm text-slate-600">
                     Here’s a quick overview of your ongoing work.
@@ -94,6 +101,7 @@ function Dashboard() {
                                     }
                                 />
                             ))}
+
                         </div>
                     )}
                 </section>

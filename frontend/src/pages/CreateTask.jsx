@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 
 function CreateTask() {
     const [form, setForm] = useState({
@@ -10,6 +12,8 @@ function CreateTask() {
     });
 
     const [error, setError] = useState("");
+    const navigate = useNavigate();
+
 
     const handleChange = (e) => {
         setForm({
@@ -38,7 +42,7 @@ function CreateTask() {
                 throw new Error("Failed to create task");
             }
 
-            window.location.href = "/";
+            navigate("/dashboard");
         } catch (err) {
             console.error("Error creating task:", err);
             setError("Could not create task. Check your fields or try again.");

@@ -66,12 +66,11 @@ public class TaskService {
     public Task convertToEntity(TaskDTO dto) {
         Task task = new Task();
 
-        // If we are updating (id exists)
+        // If we are updating
         if (dto.getId() != null) {
             task = taskRepository.findById(dto.getId()).orElse(new Task());
         }
 
-        // Basic fields
         task.setTitle(dto.getTitle());
         task.setDescription(dto.getDescription());
         task.setStatus(dto.getStatus());
@@ -93,7 +92,6 @@ public class TaskService {
                 assignedUser = userService.getUserByUsername(dto.getUsername()).orElse(null);
             }
 
-            // If admin forgot to assign Id or Username
             if (assignedUser == null) {
                 assignedUser = userService.getUserByUsername(getCurrentUsername()).orElse(null);
             }

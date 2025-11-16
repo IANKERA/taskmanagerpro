@@ -51,11 +51,22 @@ public class JwtService {
         return (tokenUsername.equals(username) && !isTokenExpired(token));
     }
 
+    public boolean isTokenValid(String token) {
+        try {
+            extractUsername(token);
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+
+
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
+    public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 }

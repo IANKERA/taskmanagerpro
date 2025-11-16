@@ -36,6 +36,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    //load users && verify password
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();

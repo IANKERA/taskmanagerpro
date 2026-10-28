@@ -14,8 +14,13 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:5174") // your Vite frontend
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                        .allowedOrigins(
+                                "http://localhost:5174",
+                                "https://taskmanagerpro-1-9p8r.onrender.com"
+                        )
+                        .allowedMethods(
+                                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+                        )
                         .allowedHeaders("*")
                         .allowCredentials(true);
             }

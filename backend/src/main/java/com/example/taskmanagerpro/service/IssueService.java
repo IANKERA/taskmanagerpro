@@ -13,7 +13,9 @@ import com.example.taskmanagerpro.model.enums.TaskStatus;
 import com.example.taskmanagerpro.repository.IssueLinkRepository;
 import com.example.taskmanagerpro.repository.SprintRepository;
 import com.example.taskmanagerpro.repository.TaskRepository;
+import com.example.taskmanagerpro.repository.TimeLogRepository;
 import com.example.taskmanagerpro.repository.UserRepository;
+import com.example.taskmanagerpro.model.TimeLog;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -39,6 +41,7 @@ public class IssueService {
     private final SprintRepository sprintRepo;
     private final NotificationService notificationService;
     private final IssueLinkRepository linkRepo;
+    private final TimeLogRepository timeLogRepo;
     private final WorkflowEngine workflowEngine;
 
     public IssueService(TaskRepository taskRepo,
@@ -49,6 +52,7 @@ public class IssueService {
                         SprintRepository sprintRepo,
                         NotificationService notificationService,
                         IssueLinkRepository linkRepo,
+                        TimeLogRepository timeLogRepo,
                         WorkflowEngine workflowEngine) {
         this.taskRepo = taskRepo;
         this.userRepo = userRepo;
@@ -58,6 +62,7 @@ public class IssueService {
         this.sprintRepo = sprintRepo;
         this.notificationService = notificationService;
         this.linkRepo = linkRepo;
+        this.timeLogRepo = timeLogRepo;
         this.workflowEngine = workflowEngine;
     }
 
@@ -77,6 +82,14 @@ public class IssueService {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Issue not found: " + issueKey));
         projectService.requireProjectRole(t.getProject().getId(),
                 ProjectRole.VIEWER, ProjectRole.MEMBER, ProjectRole.ADMIN);
+        return t;
+    }
+
+    @Transactional(readOnly = true)
+    public Task getByIssueKeyForMember(String issueKey) {
+        Task t = getByIssueKey(issueKey);
+        projectService.requireProjectRole(t.getProject().getId(),
+                ProjectRole.MEMBER, ProjectRole.ADMIN);
         return t;
     }
 
@@ -268,7 +281,15 @@ public class IssueService {
     @Transactional(readOnly = true)
     public List<com.example.taskmanagerpro.model.IssueLink> listLinks(String issueKey) {
         Task t = getByIssueKey(issueKey);
-        return linkRepo.findByTaskId(t.getId());
+        List<com.example.taskmanagerpro.model.IssueLink> links = linkRepo.findByTaskId(t.getId());
+        for (var link : links) {
+            Task other = link.getSource().getId().equals(t.getId())
+                    ? link.getTarget()
+                    : link.getSource();
+            projectService.requireProjectRole(other.getProject().getId(),
+                    ProjectRole.VIEWER, ProjectRole.MEMBER, ProjectRole.ADMIN);
+        }
+        return links;
     }
 
     @Transactional
@@ -278,6 +299,8 @@ public class IssueService {
         Task target = taskRepo.findByIssueKeyWithRelations(req.getTargetIssueKey())
                 .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Target not found: " + req.getTargetIssueKey()));
         projectService.requireProjectRole(source.getProject().getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
+        projectService.requireProjectRole(target.getProject().getId(),
+                ProjectRole.VIEWER, ProjectRole.MEMBER, ProjectRole.ADMIN);
 
         if (source.getId().equals(target.getId()))
             throw new ResponseStatusException(BAD_REQUEST, "Cannot link an issue to itself");
@@ -294,7 +317,24 @@ public class IssueService {
         var link = linkRepo.findById(linkId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Link not found"));
         projectService.requireProjectRole(link.getSource().getProject().getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
+        projectService.requireProjectRole(link.getTarget().getProject().getId(),
+                ProjectRole.VIEWER, ProjectRole.MEMBER, ProjectRole.ADMIN);
         linkRepo.delete(link);
+    }
+
+    @Transactional
+    public void deleteTimeLog(String issueKey, Long logId) {
+        Task task = getByIssueKey(issueKey);
+        TimeLog timeLog = timeLogRepo.findByIdAndTaskId(logId, task.getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Time log not found"));
+        User currentUser = projectService.currentUser();
+        boolean isAuthor = timeLog.getUser().getId().equals(currentUser.getId());
+        boolean isProjectAdmin = projectService.hasProjectRole(
+                task.getProject().getId(), ProjectRole.ADMIN);
+        if (!isAuthor && !isProjectAdmin) {
+            throw new ResponseStatusException(FORBIDDEN, "Only the time-log author or a project admin can delete it");
+        }
+        timeLogRepo.delete(timeLog);
     }
 
     // ───── M18: Bulk update ─────

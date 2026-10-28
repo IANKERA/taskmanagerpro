@@ -243,7 +243,7 @@ public class IssueController {
     @PostMapping("/api/issues/{issueKey}/time-logs")
     public ResponseEntity<TimeLogDTO> logTime(@PathVariable String issueKey,
                                                @Valid @RequestBody LogTimeRequest req) {
-        Task t = issueService.getByIssueKey(issueKey);
+        Task t = issueService.getByIssueKeyForMember(issueKey);
         String username = org.springframework.security.core.context.SecurityContextHolder
                 .getContext().getAuthentication().getName();
         com.example.taskmanagerpro.model.User user = userRepo.findByUsername(username)
@@ -267,8 +267,7 @@ public class IssueController {
 
     @DeleteMapping("/api/issues/{issueKey}/time-logs/{logId}")
     public ResponseEntity<Void> deleteTimeLog(@PathVariable String issueKey, @PathVariable Long logId) {
-        issueService.getByIssueKey(issueKey); // auth check
-        timeLogRepo.deleteById(logId);
+        issueService.deleteTimeLog(issueKey, logId);
         return ResponseEntity.noContent().build();
     }
 

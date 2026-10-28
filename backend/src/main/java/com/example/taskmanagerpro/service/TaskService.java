@@ -13,11 +13,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @Service
 public class TaskService {
@@ -47,7 +49,11 @@ public class TaskService {
 
     // Get task by ID with user
     public Optional<Task> getTaskById(Long id) {
-        return Optional.ofNullable(taskRepository.findByIdWithUser(id));
+        Task task = taskRepository.findByIdWithUser(id);
+        if (task == null || isCurrentUserAdmin() || isCurrentUserAssignee(task)) {
+            return Optional.ofNullable(task);
+        }
+        return Optional.empty();
     }
 
     // Create or update task
@@ -62,27 +68,34 @@ public class TaskService {
 
     // Get tasks by status
     public List<Task> getTasksByStatus(TaskStatus status) {
-        return taskRepository.findByStatus(status);
+        return isCurrentUserAdmin()
+                ? taskRepository.findByStatus(status)
+                : taskRepository.findByAssigneeIdAndStatus(getCurrentUserId(), status);
     }
 
     // Get tasks by priority
     public List<Task> getTasksByPriority(TaskPriority priority) {
-        return taskRepository.findByPriority(priority);
+        return isCurrentUserAdmin()
+                ? taskRepository.findByPriority(priority)
+                : taskRepository.findByAssigneeIdAndPriority(getCurrentUserId(), priority);
     }
 
     // Get tasks by user ID
     public List<Task> getTasksByUserId(Long userId) {
-        return taskRepository.findByUserId(userId);
+        if (isCurrentUserAdmin()) {
+            return taskRepository.findByUserId(userId);
+        }
+        Long currentUserId = getCurrentUserId();
+        if (!currentUserId.equals(userId)) {
+            throw new ResponseStatusException(FORBIDDEN, "You cannot access another user's tasks");
+        }
+        return taskRepository.findByUserId(currentUserId);
     }
 
     // Convert TaskDTO -> Task
+    @SuppressWarnings("deprecation")
     public Task convertToEntity(TaskDTO dto) {
         Task task = new Task();
-
-        // If we are updating
-        if (dto.getId() != null) {
-            task = taskRepository.findById(dto.getId()).orElse(new Task());
-        }
 
         task.setTitle(dto.getTitle());
         task.setDescription(dto.getDescription());
@@ -118,10 +131,14 @@ public class TaskService {
             // Admin can assign ANY user
             User assignedUser = null;
 
-            if (dto.getUserId() != null) {
-                assignedUser = userService.getUserById(dto.getUserId()).orElse(null);
-            } else if (dto.getUsername() != null) {
-                assignedUser = userService.getUserByUsername(dto.getUsername()).orElse(null);
+            Long assigneeId = dto.getAssigneeId() != null ? dto.getAssigneeId() : dto.getUserId();
+            String assigneeUsername = dto.getAssigneeUsername() != null
+                    ? dto.getAssigneeUsername()
+                    : dto.getUsername();
+            if (assigneeId != null) {
+                assignedUser = userService.getUserById(assigneeId).orElse(null);
+            } else if (assigneeUsername != null) {
+                assignedUser = userService.getUserByUsername(assigneeUsername).orElse(null);
             }
 
             if (assignedUser == null) {
@@ -181,8 +198,16 @@ public class TaskService {
             } catch (IllegalArgumentException ignored) {}
         }
 
+        Long ownerId = null;
+        if (!isCurrentUserAdmin()) {
+            Long currentUserId = getCurrentUserId();
+            if (userId != null && !userId.equals(currentUserId)) {
+                throw new ResponseStatusException(FORBIDDEN, "You cannot access another user's tasks");
+            }
+            ownerId = currentUserId;
+        }
 
-        return taskRepository.findAllWithFilters(taskStatus, taskPriority, userId,keyword, pageable)
+        return taskRepository.findAllWithFilters(taskStatus, taskPriority, userId, ownerId, keyword, pageable)
                 .map(Mapper::toTaskDTO);
     }
 
@@ -190,25 +215,7 @@ public class TaskService {
 
     public boolean canModifyTask(Task task) {
 
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String currentUsername;
-
-        if (principal instanceof UserDetails) {
-            currentUsername = ((UserDetails) principal).getUsername();
-        } else {
-            currentUsername = principal.toString();
-        }
-
-        // User is owner can modify  task
-        if (task.getUser() != null && currentUsername.equals(task.getUser().getUsername())) {
-            return true;
-        }
-
-        // Check for ROLE_ADMIN
-        return SecurityContextHolder.getContext().getAuthentication()
-                .getAuthorities()
-                .stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        return isCurrentUserAdmin() || isCurrentUserAssignee(task);
     }
 
     public Task updateTask(Task task, TaskDTO dto) {
@@ -234,14 +241,17 @@ public class TaskService {
     private Long getCurrentUserId() {
         return userService.findByUsername(getCurrentUsername())
                 .map(User::getId)
-                .orElse(null);
+                .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "Current user not found"));
     }
 
     private boolean isCurrentUserAdmin() {
-        return SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getAuthorities()
-                .stream()
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private boolean isCurrentUserAssignee(Task task) {
+        return task.getAssignee() != null
+                && getCurrentUsername().equals(task.getAssignee().getUsername());
     }
 }

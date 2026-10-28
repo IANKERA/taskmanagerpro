@@ -62,8 +62,7 @@ public class SecurityConfig {
                         // Spring forwards 4xx/5xx to /error; if that's blocked, ResponseStatusException
                         // bodies + status codes get rewritten to 403. Allow the error dispatcher through.
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/users/me").authenticated()
-                        .requestMatchers("/api/users/me/reset-password").authenticated()
+                        .requestMatchers("/api/users/me", "/api/users/me/**").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/tasks/**").authenticated()
                         .anyRequest().authenticated()

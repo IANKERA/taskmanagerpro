@@ -7,7 +7,9 @@ import com.example.taskmanagerpro.model.enums.TaskPriority;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
 import org.springframework.data.domain.Page;
 import com.example.taskmanagerpro.service.TaskService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,6 +37,9 @@ public class TaskController {
     // Create new task
     @PostMapping
     public TaskDTO createTask(@RequestBody TaskDTO taskDTO) {
+        if (taskDTO.getId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task id is assigned by the server");
+        }
         Task saved = taskService.saveTask(taskService.convertToEntity(taskDTO));
         return Mapper.toTaskDTO(saved);
     }
@@ -74,7 +79,7 @@ public class TaskController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTask(@PathVariable Long id, @RequestBody TaskDTO dto) {
         Task task = taskService.getTaskById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
 
         if (!taskService.canModifyTask(task)) {
             return ResponseEntity.status(403).body("You are not allowed to modify this task");
@@ -87,7 +92,7 @@ public class TaskController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTask(@PathVariable Long id) {
         Task task = taskService.getTaskById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
 
         if (!taskService.canModifyTask(task)) {
             return ResponseEntity.status(403).body("You are not allowed to delete this task");

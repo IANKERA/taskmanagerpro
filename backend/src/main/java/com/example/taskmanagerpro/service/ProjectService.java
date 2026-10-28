@@ -57,12 +57,15 @@ public class ProjectService {
     public Project getByKey(String key) {
         Project p = projectRepo.findByKey(key)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Project not found: " + key));
+        requireProjectRole(p.getId(),
+                ProjectRole.VIEWER, ProjectRole.MEMBER, ProjectRole.ADMIN);
         if (p.getLead() != null) p.getLead().getUsername(); // force init for DTO mapping
         return p;
     }
 
     @Transactional
     public Project save(Project p) {
+        requireProjectRole(p.getId(), ProjectRole.ADMIN);
         return projectRepo.save(p);
     }
 

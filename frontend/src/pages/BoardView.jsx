@@ -13,6 +13,7 @@ import { listTemplates } from "../api/templates";
 import api from "../api/client";
 import IssueCard from "../components/board/IssueCard";
 import BoardFilters, { applyFilters } from "../components/board/BoardFilters";
+import AssigneeSelect from "../components/AssigneeSelect";
 
 const COLUMNS = [
     { id: "PENDING",     title: "To Do" },
@@ -441,6 +442,7 @@ function DroppableColumn({ column, issues, selectable, selected, onToggle, wipLi
     const overLimit = wipLimit && issues.length > wipLimit;
     const [quickCreate, setQuickCreate] = useState(false);
     const [title, setTitle] = useState("");
+    const [assigneeUsername, setAssigneeUsername] = useState("");
     const qc = useQueryClient();
 
     const createMut = useMutation({
@@ -448,6 +450,7 @@ function DroppableColumn({ column, issues, selectable, selected, onToggle, wipLi
         onSuccess: () => {
             toast.success("Issue created");
             setTitle("");
+            setAssigneeUsername("");
             setQuickCreate(false);
             onCreated?.();
         },
@@ -516,7 +519,13 @@ function DroppableColumn({ column, issues, selectable, selected, onToggle, wipLi
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
-                        if (title.trim()) createMut.mutate({ title: title.trim(), status: column.id, issueType: "TASK", priority: "MEDIUM" });
+                        if (title.trim()) createMut.mutate({
+                            title: title.trim(),
+                            status: column.id,
+                            issueType: "TASK",
+                            priority: "MEDIUM",
+                            assigneeUsername,
+                        });
                     }}
                     className="mt-2 space-y-1"
                 >
@@ -527,6 +536,11 @@ function DroppableColumn({ column, issues, selectable, selected, onToggle, wipLi
                         placeholder="Issue title…"
                         className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-2 py-1.5 text-sm"
                         onKeyDown={(e) => { if (e.key === "Escape") { setQuickCreate(false); setTitle(""); } }}
+                    />
+                    <AssigneeSelect
+                        projectKey={projectKey}
+                        value={assigneeUsername}
+                        onChange={setAssigneeUsername}
                     />
                     <div className="flex gap-1">
                         <button disabled={createMut.isPending || !title.trim()}
@@ -686,6 +700,11 @@ function CreateIssueForm({ projectKey, onDone }) {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-3 py-2 text-sm"
                 rows={2}
+            />
+            <AssigneeSelect
+                projectKey={projectKey}
+                value={form.assigneeUsername || ""}
+                onChange={(assigneeUsername) => setForm({ ...form, assigneeUsername })}
             />
             <div className="flex gap-2 items-center">
                 <select

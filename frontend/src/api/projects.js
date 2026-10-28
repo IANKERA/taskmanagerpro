@@ -14,6 +14,9 @@ export const updateProject = (key, body) =>
 export const listMembers = (key) =>
     api.get(`/api/projects/${key}/members`).then((r) => r.data);
 
+export const listAssignableUsers = (key) =>
+    api.get(`/api/projects/${key}/assignable-users`).then((r) => r.data);
+
 export const listLabels = (key) =>
     api.get(`/api/projects/${key}/labels`).then((r) => r.data);
 

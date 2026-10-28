@@ -14,6 +14,7 @@ import api from "../api/client";
 import { createIssue, bulkUpdateIssues, reorderIssues } from "../api/issues";
 import { listSprints } from "../api/sprints";
 import IssueCard from "../components/board/IssueCard";
+import AssigneeSelect from "../components/AssigneeSelect";
 
 export default function BacklogView() {
     const { projectKey } = useParams();
@@ -306,7 +307,12 @@ function BulkToolbar({ count, activeSprints, onAction, onClear, isPending }) {
 }
 
 function BacklogCreateForm({ projectKey, onDone }) {
-    const [form, setForm] = useState({ title: "", issueType: "TASK", priority: "MEDIUM" });
+    const [form, setForm] = useState({
+        title: "",
+        issueType: "TASK",
+        priority: "MEDIUM",
+        assigneeUsername: "",
+    });
     const mut = useMutation({
         mutationFn: (body) => createIssue(projectKey, body),
         onSuccess: () => { toast.success("Issue created in backlog"); onDone(); },
@@ -324,6 +330,11 @@ function BacklogCreateForm({ projectKey, onDone }) {
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-3 py-2 text-sm"
+            />
+            <AssigneeSelect
+                projectKey={projectKey}
+                value={form.assigneeUsername}
+                onChange={(assigneeUsername) => setForm({ ...form, assigneeUsername })}
             />
             <div className="flex gap-2 items-center">
                 <select

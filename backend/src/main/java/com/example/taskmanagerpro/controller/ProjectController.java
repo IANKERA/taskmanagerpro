@@ -61,6 +61,16 @@ public class ProjectController {
         )).toList();
     }
 
+    @GetMapping("/{key}/assignable-users")
+    public List<Map<String, Object>> assignableUsers(@PathVariable String key) {
+        return projectService.listAssignableMembers(key).stream()
+                .map(m -> Map.<String, Object>of(
+                        "id", m.getUser().getId(),
+                        "username", m.getUser().getUsername()
+                ))
+                .toList();
+    }
+
     @PatchMapping("/{key}")
     public ProjectDTO update(@PathVariable String key, @RequestBody java.util.Map<String, String> body) {
         Project p = projectService.getByKey(key);

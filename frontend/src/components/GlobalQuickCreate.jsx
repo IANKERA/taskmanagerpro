@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { listProjects } from "../api/projects";
 import { createIssue } from "../api/issues";
+import AssigneeSelect from "./AssigneeSelect";
 
 export default function GlobalQuickCreate() {
     const [open, setOpen] = useState(false);
@@ -38,6 +39,7 @@ function QuickCreateModal({ onClose, navigate }) {
         title: "",
         issueType: "TASK",
         priority: "MEDIUM",
+        assigneeUsername: "",
     });
 
     // Auto-select first project
@@ -52,6 +54,7 @@ function QuickCreateModal({ onClose, navigate }) {
             title: form.title,
             issueType: form.issueType,
             priority: form.priority,
+            assigneeUsername: form.assigneeUsername,
         }),
         onSuccess: (issue) => {
             toast.success(`Created ${issue.issueKey}`);
@@ -72,7 +75,7 @@ function QuickCreateModal({ onClose, navigate }) {
                     <div className="flex gap-2">
                         <select
                             value={form.projectKey}
-                            onChange={(e) => setForm({ ...form, projectKey: e.target.value })}
+                            onChange={(e) => setForm({ ...form, projectKey: e.target.value, assigneeUsername: "" })}
                             className="border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-3 py-2 text-sm font-mono"
                         >
                             {activeProjects.map((p) => (
@@ -101,6 +104,11 @@ function QuickCreateModal({ onClose, navigate }) {
                         value={form.title}
                         onChange={(e) => setForm({ ...form, title: e.target.value })}
                         className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded px-3 py-2.5 text-sm"
+                    />
+                    <AssigneeSelect
+                        projectKey={form.projectKey}
+                        value={form.assigneeUsername}
+                        onChange={(assigneeUsername) => setForm({ ...form, assigneeUsername })}
                     />
                     <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-400 dark:text-slate-500">Ctrl+N to open · Esc to close</span>

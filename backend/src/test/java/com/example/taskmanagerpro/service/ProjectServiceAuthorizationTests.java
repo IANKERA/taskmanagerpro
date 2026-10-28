@@ -1,7 +1,9 @@
 package com.example.taskmanagerpro.service;
 
 import com.example.taskmanagerpro.model.Project;
+import com.example.taskmanagerpro.model.ProjectMembership;
 import com.example.taskmanagerpro.model.User;
+import com.example.taskmanagerpro.model.enums.ProjectRole;
 import com.example.taskmanagerpro.model.enums.Role;
 import com.example.taskmanagerpro.repository.ProjectMembershipRepository;
 import com.example.taskmanagerpro.repository.ProjectRepository;
@@ -47,6 +49,9 @@ class ProjectServiceAuthorizationTests {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         "alice", null, List.of(new SimpleGrantedAuthority(Role.ROLE_USER.name()))));
+    }
+
+    private void stubCurrentUser() {
         User alice = new User();
         alice.setId(1L);
         alice.setUsername("alice");
@@ -60,6 +65,7 @@ class ProjectServiceAuthorizationTests {
 
     @Test
     void deniesProjectLookupToANonMember() {
+        stubCurrentUser();
         Project project = new Project();
         project.setId(7L);
         when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
@@ -75,6 +81,7 @@ class ProjectServiceAuthorizationTests {
 
     @Test
     void deniesProjectChangesByNonAdmins() {
+        stubCurrentUser();
         Project project = new Project();
         project.setId(7L);
         when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any()))
@@ -86,5 +93,44 @@ class ProjectServiceAuthorizationTests {
 
         assertEquals(403, exception.getStatusCode().value());
         verify(projectRepository, never()).save(any(Project.class));
+    }
+
+    @Test
+    void assignableMembersIncludesOnlyProjectMembersAndAdmins() {
+        stubCurrentUser();
+        Project project = new Project();
+        project.setId(7L);
+        when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any()))
+                .thenReturn(true);
+        when(membershipRepository.findByProjectId(7L)).thenReturn(List.of(
+                membership(2L, "member", ProjectRole.MEMBER),
+                membership(3L, "admin", ProjectRole.ADMIN),
+                membership(4L, "viewer", ProjectRole.VIEWER)
+        ));
+
+        List<ProjectMembership> eligible = projectService.listAssignableMembers("SECRET");
+
+        assertEquals(List.of("member", "admin"),
+                eligible.stream().map(m -> m.getUser().getUsername()).toList());
+    }
+
+    @Test
+    void rejectsAssigneeWhoIsNotAMemberOrProjectAdmin() {
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(7L, 9L, List.of(
+                ProjectRole.MEMBER, ProjectRole.ADMIN))).thenReturn(false);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> projectService.requireAssignableMember(7L, 9L));
+
+        assertEquals(400, exception.getStatusCode().value());
+    }
+
+    private ProjectMembership membership(Long userId, String username, ProjectRole role) {
+        User user = new User();
+        user.setId(userId);
+        user.setUsername(username);
+        return ProjectMembership.builder().user(user).projectRole(role).build();
     }
 }

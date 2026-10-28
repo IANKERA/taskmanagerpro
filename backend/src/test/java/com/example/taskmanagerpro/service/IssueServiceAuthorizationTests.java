@@ -1,6 +1,7 @@
 package com.example.taskmanagerpro.service;
 
 import com.example.taskmanagerpro.dto.CreateLinkRequest;
+import com.example.taskmanagerpro.dto.CreateIssueRequest;
 import com.example.taskmanagerpro.model.Project;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.TimeLog;
@@ -97,6 +98,31 @@ class IssueServiceAuthorizationTests {
 
         assertEquals(403, exception.getStatusCode().value());
         verify(issueLinkRepository, never()).save(any());
+    }
+
+    @Test
+    void creatingIssueRejectsAssigneeOutsideProject() {
+        Project project = new Project();
+        project.setId(20L);
+        User reporter = user(1L, "alice");
+        User outsider = user(3L, "charlie");
+        when(projectService.getByKey("DST")).thenReturn(project);
+        when(projectService.currentUser()).thenReturn(reporter);
+        when(userRepository.findByUsername("charlie")).thenReturn(Optional.of(outsider));
+        org.mockito.Mockito.doThrow(new ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST))
+                .when(projectService).requireAssignableMember(20L, 3L);
+
+        CreateIssueRequest request = new CreateIssueRequest();
+        request.setTitle("Assigned issue");
+        request.setAssigneeUsername("charlie");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> createService().create("DST", request));
+
+        assertEquals(400, exception.getStatusCode().value());
+        verify(taskRepository, never()).save(any(Task.class));
     }
 
     @Test

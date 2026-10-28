@@ -15,6 +15,7 @@ import { subtasks } from "../api/search";
 import { listLabels, listMembers } from "../api/projects";
 import Markdown from "../components/Markdown";
 import MentionTextarea from "../components/MentionTextarea";
+import AssigneeSelect from "../components/AssigneeSelect";
 import { getFieldValues, setFieldValues } from "../api/customFields";
 import { useRecentIssues } from "../hooks/useRecentIssues";
 
@@ -163,17 +164,15 @@ export default function IssueModal() {
                                         {TYPES.map((s) => <option key={s}>{s}</option>)}
                                     </select>
                                 </SidebarField>
-                                <SidebarField label="Assignee">
-                                    <input
-                                        defaultValue={issue.assigneeUsername || ""}
-                                        placeholder="username or blank to unassign"
-                                        onBlur={(e) => {
-                                            if ((issue.assigneeUsername || "") === e.target.value) return;
-                                            updateMut.mutate({ assigneeUsername: e.target.value });
-                                        }}
-                                        className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1.5 text-sm"
-                                    />
-                                </SidebarField>
+                                <AssigneeSelect
+                                    projectKey={projectKey}
+                                    value={issue.assigneeUsername || ""}
+                                    onChange={(assigneeUsername) => {
+                                        if ((issue.assigneeUsername || "") !== assigneeUsername) {
+                                            updateMut.mutate({ assigneeUsername });
+                                        }
+                                    }}
+                                />
                                 <SidebarField label="Reporter">
                                     <div className="text-sm text-slate-700 dark:text-slate-300">{issue.reporterUsername}</div>
                                 </SidebarField>

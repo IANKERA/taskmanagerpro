@@ -99,7 +99,7 @@ public class IssueService {
         projectService.requireProjectRole(p.getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
 
         User reporter = projectService.currentUser();
-        User assignee = resolveAssignee(req.getAssigneeUsername());
+        User assignee = resolveAssignee(p.getId(), req.getAssigneeUsername());
 
         Task t = Task.builder()
                 .project(p)
@@ -124,6 +124,9 @@ public class IssueService {
     /** Used by scheduled tasks (no security context). Saves a pre-built Task. */
     @Transactional
     public Task saveDirectly(Task t, User actor) {
+        if (t.getAssignee() != null) {
+            projectService.requireAssignableMember(t.getProject().getId(), t.getAssignee().getId());
+        }
         t = taskRepo.save(t);
         activityService.logCreated(t, actor);
         if (t.getAssignee() != null) {
@@ -163,7 +166,7 @@ public class IssueService {
             t.setDueDate(req.getDueDate().atStartOfDay());
         }
         if (req.getAssigneeUsername() != null) {
-            User newAssignee = req.getAssigneeUsername().isBlank() ? null : resolveAssignee(req.getAssigneeUsername());
+            User newAssignee = resolveAssignee(t.getProject().getId(), req.getAssigneeUsername());
             activityService.logAssignment(t, actor, t.getAssignee(), newAssignee);
             t.setAssignee(newAssignee);
         }
@@ -355,7 +358,7 @@ public class IssueService {
         User newAssignee = null;
         boolean changeAssignee = req.getAssigneeUsername() != null;
         if (changeAssignee && !req.getAssigneeUsername().isBlank()) {
-            newAssignee = resolveAssignee(req.getAssigneeUsername());
+            newAssignee = resolveAssignee(p.getId(), req.getAssigneeUsername());
         }
 
         List<Task> updated = new ArrayList<>();
@@ -424,6 +427,9 @@ public class IssueService {
         }
         projectService.requireProjectRole(source.getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
         projectService.requireProjectRole(target.getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
+        if (t.getAssignee() != null) {
+            projectService.requireAssignableMember(target.getId(), t.getAssignee().getId());
+        }
 
         String oldKey = t.getIssueKey();
         String newKey = issueKeyAllocator.allocate(target.getId());
@@ -437,9 +443,11 @@ public class IssueService {
         return t;
     }
 
-    private User resolveAssignee(String username) {
+    private User resolveAssignee(Long projectId, String username) {
         if (username == null || username.isBlank()) return null;
-        return userRepo.findByUsername(username)
+        User assignee = userRepo.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Assignee not found: " + username));
+        projectService.requireAssignableMember(projectId, assignee.getId());
+        return assignee;
     }
 }

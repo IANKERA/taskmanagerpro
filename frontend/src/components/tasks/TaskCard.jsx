@@ -1,7 +1,8 @@
 import { deleteTask } from "../../api/tasksApi";
 import { Link } from "react-router-dom";
 
-function TaskCard({ id, title, status, priority, dueDate, assignee, onDelete, onEdit }) {
+function TaskCard({ id, title, status, priority, dueDate, assignee, assigneeUsername, username, onDelete, onEdit }) {
+    const assignedTo = assigneeUsername || username || assignee?.username || "";
 
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this task?")) return;
@@ -29,6 +30,10 @@ function TaskCard({ id, title, status, priority, dueDate, assignee, onDelete, on
 
             <p className="text-sm text-slate-600">
                 Due: {dueDate || "No date"}
+            </p>
+
+            <p className="text-sm text-slate-600">
+                Assignee: <strong>{assignedTo || "Unassigned"}</strong>
             </p>
 
             <div className="flex gap-2 mt-3">

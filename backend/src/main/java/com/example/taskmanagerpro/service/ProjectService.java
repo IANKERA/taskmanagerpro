@@ -135,6 +135,24 @@ public class ProjectService {
         return ms;
     }
 
+    @Transactional(readOnly = true)
+    public List<ProjectMembership> listAssignableMembers(String projectKey) {
+        return listMembers(projectKey).stream()
+                .filter(m -> m.getProjectRole() == ProjectRole.MEMBER
+                        || m.getProjectRole() == ProjectRole.ADMIN)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public void requireAssignableMember(Long projectId, Long userId) {
+        boolean eligible = membershipRepo.existsByProjectAndUserWithRoleIn(
+                projectId, userId, List.of(ProjectRole.MEMBER, ProjectRole.ADMIN));
+        if (!eligible) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Assignee must be a MEMBER or ADMIN of the task's project");
+        }
+    }
+
     // ───────── Authorization helpers (used here and by future controllers) ─────────
 
     /** Throws 403 unless the current user has one of the given roles on the project (or is a global ADMIN). */

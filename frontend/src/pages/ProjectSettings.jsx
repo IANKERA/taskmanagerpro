@@ -6,6 +6,7 @@ import {
     listMembers, addMember, listLabels, createLabel, deleteLabel,
     getProject, updateProject,
 } from "../api/projects";
+import { formatApiError } from "../api/errorMessage";
 import { listFieldDefs, createFieldDef, deleteFieldDef } from "../api/customFields";
 import { listTemplates, createTemplate, deleteTemplate } from "../api/templates";
 import { listRules, createRule, toggleRule, deleteRule } from "../api/recurringRules";
@@ -147,7 +148,7 @@ function MembersSection({ projectKey }) {
             qc.invalidateQueries({ queryKey: ["members", projectKey] });
             toast.success("Member added");
         },
-        onError: (e) => toast.error(e.message),
+        onError: (e) => toast.error(formatApiError(e)),
     });
 
     return (
@@ -178,7 +179,7 @@ function MembersSection({ projectKey }) {
                     {addMut.isPending ? "Adding…" : "Add / update"}
                 </button>
             </form>
-            {addMut.error && <div className="text-sm text-red-600 mb-3">{addMut.error.message}</div>}
+            {addMut.error && <div className="text-sm text-red-600 mb-3">{formatApiError(addMut.error)}</div>}
 
             {isLoading ? (
                 <div className="text-slate-500">Loading…</div>

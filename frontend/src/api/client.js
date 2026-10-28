@@ -1,4 +1,5 @@
 import axios from "axios";
+import { formatApiError } from "./errorMessage";
 
 /**
  * Single axios instance for the whole app.
@@ -34,12 +35,7 @@ api.interceptors.response.use(
             }
         }
 
-        const wrapped = new Error(
-            err.response?.data?.message ||
-            err.response?.data ||
-            err.message ||
-            "Request failed"
-        );
+        const wrapped = new Error(formatApiError(err));
 
         wrapped.status = err.response?.status;
         wrapped.data = err.response?.data;

@@ -49,7 +49,8 @@ backend/src/main/resources/application.properties
 backend/src/main/resources/application.yml
 
 # Environment variables / secrets
-.env
+**/.env*
+!**/.env.example
 
 # Node
 node_modules/
@@ -63,3 +64,7 @@ dist/
 *.jar
 *.war
 .mvn/timing.log
+
+# Local thesis screenshots
+thesis_screenshots/
+thesis_screenshots.zip

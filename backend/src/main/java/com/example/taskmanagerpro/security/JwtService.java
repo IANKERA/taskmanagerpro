@@ -2,29 +2,49 @@ package com.example.taskmanagerpro.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.function.Function;
 
+/**
+ * JWT issuing/parsing. The signing key is loaded from {@code jwt.secret} so tokens
+ * survive across restarts. M1 also externalises the expiration via {@code jwt.expiration-ms}.
+ */
 @Service
 public class JwtService {
 
-    private static final long EXPIRATION_TIME = 1000 * 60 * 60 * 10; // 10 hours
-    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256); // generate secret key
+    private final String secret;
+    private final long expirationMs;
+    private SecretKey key;
 
-    // Extract username from JWT
+    public JwtService(@Value("${jwt.secret}") String secret,
+                      @Value("${jwt.expiration-ms:36000000}") long expirationMs) {
+        this.secret = secret;
+        this.expirationMs = expirationMs;
+    }
+
+    @PostConstruct
+    void init() {
+        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            throw new IllegalStateException(
+                    "jwt.secret must be at least 32 bytes for HS256 (got " + bytes.length + ")");
+        }
+        this.key = Keys.hmacShaKeyFor(bytes);
+    }
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    // Extract any claim
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
+        return claimsResolver.apply(extractAllClaims(token));
     }
 
     private Claims extractAllClaims(String token) {
@@ -35,20 +55,22 @@ public class JwtService {
                 .getBody();
     }
 
-    // Generate token for a username
     public String generateToken(String username) {
+        long now = System.currentTimeMillis();
         return Jwts.builder()
                 .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .setIssuedAt(new Date(now))
+                .setExpiration(new Date(now + expirationMs))
                 .signWith(key)
                 .compact();
     }
 
-    // Validate token
     public boolean isTokenValid(String token, String username) {
-        final String tokenUsername = extractUsername(token);
-        return (tokenUsername.equals(username) && !isTokenExpired(token));
+        try {
+            return username.equals(extractUsername(token)) && !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public boolean isTokenValid(String token) {
@@ -59,8 +81,6 @@ public class JwtService {
             return false;
         }
     }
-
-
 
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());

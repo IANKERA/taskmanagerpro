@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/taskdb
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:?Set DB_USER before starting Docker Compose}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASS:?Set DB_PASS before starting Docker Compose}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET before starting Docker Compose}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    volumes:
+      - attachments:/app/attachments
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  attachments:

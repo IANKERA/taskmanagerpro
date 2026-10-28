@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
+import api from "../api/client";
 
 const AuthContext = createContext();
 
@@ -11,12 +12,6 @@ export function AuthProvider({ children }) {
     function login(token) {
         localStorage.setItem("token", token);
         setToken(token);
-
-        const decoded = jwtDecode(token);
-        setUser({
-            username: decoded.sub,
-            role: decoded.role
-        });
     }
 
     // LOGOUT → clear
@@ -26,21 +21,28 @@ export function AuthProvider({ children }) {
         setUser(null);
     }
 
-    // When token changes → decode user
+    // When token changes → fetch full user profile
     useEffect(() => {
         if (token) {
             const decoded = jwtDecode(token);
-            setUser({
-                username: decoded.sub,
-                role: decoded.role
-            });
+            // Set basic info immediately from JWT
+            setUser({ username: decoded.sub, role: null, id: null });
+            // Then fetch full profile
+            api.get("/api/users/me")
+                .then((r) => setUser(r.data))
+                .catch(() => {
+                    // Fallback to JWT-only data
+                    setUser({ username: decoded.sub, role: null, id: null });
+                });
         } else {
             setUser(null);
         }
     }, [token]);
 
+    const isAdmin = user?.role === "ADMIN" || user?.role === "ROLE_ADMIN";
+
     return (
-        <AuthContext.Provider value={{ token, user, login, logout }}>
+        <AuthContext.Provider value={{ token, user, login, logout, isAdmin }}>
             {children}
         </AuthContext.Provider>
     );

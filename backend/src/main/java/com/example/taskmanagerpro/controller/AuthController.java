@@ -24,6 +24,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
+    //User Register
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {
         try {
@@ -47,6 +48,7 @@ public class AuthController {
         return ResponseEntity.ok(new AuthResponse(jwt));
     }
 
+    //ON-DEV only
     @GetMapping("/validate-token")
     public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String authHeader) {
 

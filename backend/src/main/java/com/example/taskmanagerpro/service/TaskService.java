@@ -2,10 +2,12 @@ package com.example.taskmanagerpro.service;
 
 import com.example.taskmanagerpro.dto.Mapper;
 import com.example.taskmanagerpro.dto.TaskDTO;
+import com.example.taskmanagerpro.model.Project;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.User;
 import com.example.taskmanagerpro.model.enums.TaskPriority;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
+import com.example.taskmanagerpro.repository.ProjectRepository;
 import com.example.taskmanagerpro.repository.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.*;
@@ -21,10 +23,21 @@ import java.util.stream.Collectors;
 public class TaskService {
     private final UserService userService;
     private final TaskRepository taskRepository;
+    private final ProjectRepository projectRepository;
+    private final IssueKeyAllocator issueKeyAllocator;
 
-    public TaskService(TaskRepository taskRepository, UserService userService) {
+    public TaskService(TaskRepository taskRepository, UserService userService,
+                       ProjectRepository projectRepository, IssueKeyAllocator issueKeyAllocator) {
         this.taskRepository = taskRepository;
         this.userService = userService;
+        this.projectRepository = projectRepository;
+        this.issueKeyAllocator = issueKeyAllocator;
+    }
+
+    /** Fallback project for tasks created without an explicit project (M1 transitional). */
+    private Project inboxProject() {
+        return projectRepository.findByKey("INB")
+                .orElseThrow(() -> new RuntimeException("INBOX project missing — Flyway migration didn't run?"));
     }
 
     // Get all tasks with user
@@ -75,6 +88,25 @@ public class TaskService {
         task.setDescription(dto.getDescription());
         task.setStatus(dto.getStatus());
         task.setPriority(dto.getPriority() != null ? dto.getPriority() : TaskPriority.MEDIUM);
+
+        // M1: default to INBOX project; M2 will require an explicit project on the DTO.
+        if (task.getProject() == null) {
+            task.setProject(inboxProject());
+        }
+
+        // M2: every Task must have a reporter and an issueKey. For the legacy /api/tasks API,
+        // the reporter is whoever is creating the row, and the key is auto-allocated.
+        if (task.getReporter() == null) {
+            User caller = userService.getUserByUsername(getCurrentUsername())
+                    .orElseThrow(() -> new RuntimeException("Current user not found"));
+            task.setReporter(caller);
+        }
+        if (task.getIssueKey() == null) {
+            task.setIssueKey(issueKeyAllocator.allocate(task.getProject().getId()));
+        }
+        if (task.getIssueType() == null) {
+            task.setIssueType(com.example.taskmanagerpro.model.enums.IssueType.TASK);
+        }
 
         //LocalDateTime if date exist
         if (dto.getDueDate() != null) {

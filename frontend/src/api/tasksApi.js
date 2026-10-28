@@ -1,5 +1,5 @@
 // src/api/tasksApi.js
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 export async function fetchTasks() {
     const token = localStorage.getItem("token");
@@ -38,7 +38,7 @@ export async function fetchTaskById(id) {
 export async function deleteTask(id) {
     const token = localStorage.getItem("token");
 
-    const response = await fetch(`http://localhost:8080/api/tasks/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
         method: "DELETE",
         headers: {
             Authorization: `Bearer ${token}`,
@@ -68,5 +68,4 @@ export async function updateTask(id, taskData) {
 
     return response.json();
 }
-
 

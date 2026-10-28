@@ -2,7 +2,9 @@ package com.example.taskmanagerpro.controller;
 
 import com.example.taskmanagerpro.dto.Mapper;
 import com.example.taskmanagerpro.dto.UserDTO;
+import com.example.taskmanagerpro.model.NotificationPreference;
 import com.example.taskmanagerpro.model.User;
+import com.example.taskmanagerpro.service.NotificationService;
 import com.example.taskmanagerpro.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -10,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -17,9 +20,21 @@ import java.util.Optional;
 public class UserController {
 
     private final UserService userService;
+    private final NotificationService notificationService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, NotificationService notificationService) {
         this.userService = userService;
+        this.notificationService = notificationService;
+    }
+
+    /** Current-user profile — accessible to any authenticated user. */
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> me() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userService.getUserByUsername(username)
+                .map(Mapper::toUserDTO)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // Get all users
@@ -37,28 +52,25 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Create new user
-    @PostMapping
-    public UserDTO createUser(@RequestBody User user) {
-        User saved = userService.saveUser(user);
-        return Mapper.toUserDTO(saved);
-    }
+    // M1: POST /api/users removed — user creation goes through /api/auth/register, which hashes the password.
+    // The old endpoint stored the password in plaintext, which was a security hole.
 
-    // Update user
+    // Update user (admin only — secured by SecurityConfig). Password updates go through reset-password endpoints.
     @PutMapping("/{id}")
     public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody User user) {
         return userService.getUserById(id)
                 .map(existing -> {
-                    existing.setUsername(user.getUsername());
-                    existing.setPassword(user.getPassword());
-                    existing.setRole(user.getRole());
+                    if (user.getUsername() != null) existing.setUsername(user.getUsername());
+                    if (user.getEmail() != null) existing.setEmail(user.getEmail());
+                    if (user.getRole() != null) existing.setRole(user.getRole());
+                    // Intentionally NOT updating password here — use /reset-password endpoints which hash properly.
                     User updated = userService.saveUser(existing);
                     return ResponseEntity.ok(Mapper.toUserDTO(updated));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // POST /api/users/{id}/reset-password
+    // Reset-password
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/reset-password")
     public ResponseEntity<?> resetPassword(
@@ -138,6 +150,48 @@ public class UserController {
         }
     }
 
+
+    /** Update current user's email. */
+    @PatchMapping("/me/email")
+    public ResponseEntity<UserDTO> updateEmail(@RequestBody Map<String, String> body) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userService.getUserByUsername(username)
+                .map(user -> {
+                    user.setEmail(body.get("email"));
+                    User saved = userService.saveUser(user);
+                    return ResponseEntity.ok(Mapper.toUserDTO(saved));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /** Get notification preferences for current user. */
+    @GetMapping("/me/notification-preferences")
+    public ResponseEntity<Map<String, Boolean>> getNotifPrefs() {
+        NotificationPreference p = notificationService.getPreferences();
+        return ResponseEntity.ok(Map.of(
+            "notifyAssigned", p.isNotifyAssigned(),
+            "notifyMentioned", p.isNotifyMentioned(),
+            "notifyWatching", p.isNotifyWatching(),
+            "notifyComment", p.isNotifyComment()
+        ));
+    }
+
+    /** Update notification preferences for current user. */
+    @PutMapping("/me/notification-preferences")
+    public ResponseEntity<Map<String, Boolean>> updateNotifPrefs(@RequestBody Map<String, Boolean> body) {
+        NotificationPreference p = notificationService.savePreferences(
+            body.getOrDefault("notifyAssigned", true),
+            body.getOrDefault("notifyMentioned", true),
+            body.getOrDefault("notifyWatching", true),
+            body.getOrDefault("notifyComment", true)
+        );
+        return ResponseEntity.ok(Map.of(
+            "notifyAssigned", p.isNotifyAssigned(),
+            "notifyMentioned", p.isNotifyMentioned(),
+            "notifyWatching", p.isNotifyWatching(),
+            "notifyComment", p.isNotifyComment()
+        ));
+    }
 
     // Delete user
     @DeleteMapping("/{id}")

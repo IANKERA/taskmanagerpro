@@ -26,12 +26,21 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column
+    private String email;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
-    // One-to-many relationship with tasks
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    /**
+     * Tasks assigned to this user. Note: in M2 we split Task.user into
+     * assignee (this side) + reporter. Cascading is removed because deleting
+     * a user shouldn't delete issues — Jira's behaviour is to leave them
+     * unassigned (assignee_id ON DELETE SET NULL handles it at the DB level).
+     */
+    @OneToMany(mappedBy = "assignee")
+    @JsonManagedReference("assignee-tasks")
+    @Builder.Default
     private Set<Task> tasks = new HashSet<>();
 }

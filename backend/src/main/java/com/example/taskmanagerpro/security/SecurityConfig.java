@@ -60,6 +60,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Spring forwards 4xx/5xx to /error; if that's blocked, ResponseStatusException
+                        // bodies + status codes get rewritten to 403. Allow the error dispatcher through.
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/users/me/reset-password").authenticated()
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/tasks/**").authenticated()
@@ -81,7 +85,7 @@ public class SecurityConfig {
                 "http://localhost:5174"
         ));
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);

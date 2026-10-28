@@ -6,8 +6,10 @@ import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.User;
 import com.example.taskmanagerpro.repository.NotificationPreferenceRepository;
 import com.example.taskmanagerpro.repository.NotificationRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -33,11 +35,21 @@ public class NotificationService {
     private String fromAddress;
 
     public NotificationService(NotificationRepository notifRepo, ProjectService projectService,
-                               JavaMailSender mailSender, NotificationPreferenceRepository prefRepo) {
+                               ObjectProvider<JavaMailSender> mailSenderProvider,
+                               NotificationPreferenceRepository prefRepo) {
         this.notifRepo = notifRepo;
         this.projectService = projectService;
-        this.mailSender = mailSender;
+        this.mailSender = mailSenderProvider.getIfAvailable();
         this.prefRepo = prefRepo;
+    }
+
+    @PostConstruct
+    void validateMailConfiguration() {
+        if (mailEnabled && mailSender == null) {
+            throw new IllegalStateException(
+                    "Email notifications are enabled but no JavaMailSender is configured. "
+                            + "Configure spring.mail.host or set MAIL_ENABLED=false.");
+        }
     }
 
     @Transactional(readOnly = true)

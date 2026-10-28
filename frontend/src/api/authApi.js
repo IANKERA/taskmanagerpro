@@ -1,4 +1,7 @@
-const API_URL = `${import.meta.env.VITE_API_URL || ""}/api/auth`;
+const API_URL = `${(
+    import.meta.env.VITE_API_URL ||
+    "https://taskmanagerpro-7m9s.onrender.com"
+).replace(/\/+$/, "")}/api/auth`;
 
 export async function loginRequest(username, password) {
     const res = await fetch(`${API_URL}/login`, {
@@ -24,7 +27,9 @@ export async function loginRequest(username, password) {
 export async function registerRequest(username, password) {
     const response = await fetch(`${API_URL}/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify({ username, password }),
     });
 

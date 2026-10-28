@@ -1,5 +1,7 @@
-// src/api/tasksApi.js
-const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+const API_BASE_URL = (
+    import.meta.env.VITE_API_URL ||
+    "https://taskmanagerpro-7m9s.onrender.com"
+).replace(/\/+$/, "");
 
 export async function fetchTasks() {
     const token = localStorage.getItem("token");
@@ -8,7 +10,7 @@ export async function fetchTasks() {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
         },
     });
 
@@ -33,7 +35,6 @@ export async function fetchTaskById(id) {
 
     return response.json();
 }
-
 
 export async function deleteTask(id) {
     const token = localStorage.getItem("token");
@@ -68,4 +69,3 @@ export async function updateTask(id, taskData) {
 
     return response.json();
 }
-

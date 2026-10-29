@@ -63,6 +63,9 @@ class IssueServiceAuthorizationTests {
     @Mock
     private WorkflowEngine workflowEngine;
 
+    @Mock
+    private AttachmentCleanupService attachmentCleanupService;
+
     private IssueService createService() {
         return new IssueService(
                 taskRepository,
@@ -74,7 +77,8 @@ class IssueServiceAuthorizationTests {
                 notificationService,
                 issueLinkRepository,
                 timeLogRepository,
-                workflowEngine);
+                workflowEngine,
+                attachmentCleanupService);
     }
 
     @Test

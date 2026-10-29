@@ -91,13 +91,6 @@ public class TaskController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTask(@PathVariable Long id) {
-        Task task = taskService.getTaskById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
-
-        if (!taskService.canModifyTask(task)) {
-            return ResponseEntity.status(403).body("You are not allowed to delete this task");
-        }
-
         taskService.deleteTask(id);
         return ResponseEntity.ok("Task deleted successfully");
     }

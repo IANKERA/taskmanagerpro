@@ -4,12 +4,14 @@ import com.example.taskmanagerpro.dto.AttachmentDTO;
 import com.example.taskmanagerpro.model.Attachment;
 import com.example.taskmanagerpro.service.AttachmentService;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -40,7 +42,8 @@ public class AttachmentController {
         String contentType = a.getContentType() != null ? a.getContentType() : "application/octet-stream";
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + a.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(a.getFilename(), StandardCharsets.UTF_8).build().toString())
                 .body(resource);
     }
 

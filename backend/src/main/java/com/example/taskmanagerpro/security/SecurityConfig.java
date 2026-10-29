@@ -4,6 +4,7 @@ import com.example.taskmanagerpro.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -19,6 +20,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -29,6 +32,9 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Value("${app.cors.allowed-origins:https://taskmanagerpro-1-9p8r.onrender.com,http://localhost:5174}")
+    private String allowedOrigins = "https://taskmanagerpro-1-9p8r.onrender.com,http://localhost:5174";
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -77,10 +83,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "https://taskmanagerpro-1-9p8r.onrender.com",
-                "http://localhost:5174"
-        ));
+        configuration.setAllowedOrigins(parseAllowedOrigins(allowedOrigins));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
@@ -90,6 +93,39 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    static List<String> parseAllowedOrigins(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("At least one exact CORS origin must be configured");
+        }
+        List<String> origins = Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .distinct()
+                .toList();
+        if (origins.isEmpty()) {
+            throw new IllegalStateException("At least one exact CORS origin must be configured");
+        }
+        for (String origin : origins) {
+            if (origin.equals("*")) {
+                throw new IllegalStateException("CORS requires exact origins; wildcard origins are not allowed");
+            }
+            try {
+                URI uri = URI.create(origin);
+                if (!("http".equalsIgnoreCase(uri.getScheme())
+                        || "https".equalsIgnoreCase(uri.getScheme()))
+                        || uri.getHost() == null || uri.getRawUserInfo() != null
+                        || (uri.getRawPath() != null && !uri.getRawPath().isEmpty())
+                        || uri.getRawQuery() != null || uri.getRawFragment() != null) {
+                    throw new IllegalStateException(
+                            "CORS origins must be exact HTTP or HTTPS origins without a path");
+                }
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException("CORS origin configuration is invalid");
+            }
+        }
+        return origins;
     }
 
 

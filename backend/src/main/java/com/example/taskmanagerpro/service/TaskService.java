@@ -7,12 +7,14 @@ import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.User;
 import com.example.taskmanagerpro.model.enums.TaskPriority;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
+import com.example.taskmanagerpro.model.enums.ProjectRole;
 import com.example.taskmanagerpro.repository.ProjectRepository;
 import com.example.taskmanagerpro.repository.TaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -27,13 +29,18 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final IssueKeyAllocator issueKeyAllocator;
+    private final ProjectService projectService;
+    private final AttachmentCleanupService attachmentCleanupService;
 
     public TaskService(TaskRepository taskRepository, UserService userService,
-                       ProjectRepository projectRepository, IssueKeyAllocator issueKeyAllocator) {
+                       ProjectRepository projectRepository, IssueKeyAllocator issueKeyAllocator,
+                       ProjectService projectService, AttachmentCleanupService attachmentCleanupService) {
         this.taskRepository = taskRepository;
         this.userService = userService;
         this.projectRepository = projectRepository;
         this.issueKeyAllocator = issueKeyAllocator;
+        this.projectService = projectService;
+        this.attachmentCleanupService = attachmentCleanupService;
     }
 
     /** Fallback project for tasks created without an explicit project (M1 transitional). */
@@ -62,8 +69,14 @@ public class TaskService {
     }
 
     // Delete task
+    @Transactional
     public void deleteTask(Long id) {
-        taskRepository.deleteById(id);
+        Task task = Optional.ofNullable(taskRepository.findByIdWithUser(id))
+                .orElseThrow(() -> new ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Task not found"));
+        projectService.requireProjectRole(task.getProject().getId(), ProjectRole.ADMIN);
+        attachmentCleanupService.enqueueForTask(task.getId());
+        taskRepository.delete(task);
     }
 
     // Get tasks by status

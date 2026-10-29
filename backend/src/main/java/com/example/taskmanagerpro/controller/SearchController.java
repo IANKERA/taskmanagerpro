@@ -5,10 +5,8 @@ import com.example.taskmanagerpro.dto.TaskDTO;
 import com.example.taskmanagerpro.model.ActivityLog;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
-import com.example.taskmanagerpro.service.ProjectService;
 import com.example.taskmanagerpro.service.SearchService;
 import com.example.taskmanagerpro.repository.ActivityLogRepository;
-import com.example.taskmanagerpro.repository.TaskRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,13 +19,10 @@ import java.util.Map;
 public class SearchController {
 
     private final SearchService searchService;
-    private final TaskRepository taskRepository;
     private final ActivityLogRepository activityLogRepository;
 
-    public SearchController(SearchService searchService, TaskRepository taskRepository,
-                            ActivityLogRepository activityLogRepository) {
+    public SearchController(SearchService searchService, ActivityLogRepository activityLogRepository) {
         this.searchService = searchService;
-        this.taskRepository = taskRepository;
         this.activityLogRepository = activityLogRepository;
     }
 
@@ -87,7 +82,7 @@ public class SearchController {
 
     @GetMapping("/workload")
     public List<Map<String, Object>> workload() {
-        List<Task> openTasks = taskRepository.findAllOpenWithRelations();
+        List<Task> openTasks = searchService.workloadTasks();
 
         // Group by assignee username
         Map<String, List<Task>> byUser = new LinkedHashMap<>();

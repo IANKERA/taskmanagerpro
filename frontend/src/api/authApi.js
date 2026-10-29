@@ -1,9 +1,7 @@
 import { formatApiError } from "./errorMessage";
+import { resolveApiBaseUrl } from "./client";
 
-const API_URL = `${(
-    import.meta.env.VITE_API_URL ||
-    "https://taskmanagerpro-7m9s.onrender.com"
-).replace(/\/+$/, "")}/api/auth`;
+const API_URL = `${resolveApiBaseUrl(import.meta.env.VITE_API_URL)}/api/auth`;
 
 export async function loginRequest(username, password) {
     const res = await fetch(`${API_URL}/login`, {

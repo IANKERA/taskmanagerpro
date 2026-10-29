@@ -11,6 +11,7 @@ import { listFieldDefs, createFieldDef, deleteFieldDef } from "../api/customFiel
 import { listTemplates, createTemplate, deleteTemplate } from "../api/templates";
 import { listRules, createRule, toggleRule, deleteRule } from "../api/recurringRules";
 import { listWorkflowRules, createWorkflowRule, toggleWorkflowRule, deleteWorkflowRule } from "../api/workflowRules";
+import api from "../api/client";
 
 const ROLES = ["VIEWER", "MEMBER", "ADMIN"];
 const ROLE_STYLES = {
@@ -875,6 +876,12 @@ function WorkflowRulesSection({ projectKey }) {
     );
 }
 
+async function apiRequest(url, { method = "GET", headers, body } = {}) {
+    return method === "POST"
+        ? await api.post(url, body, { headers })
+        : await api.get(url, { headers, responseType: "blob" });
+}
+
 function ImportExportSection({ projectKey }) {
     const [importing, setImporting] = useState(false);
     const [result, setResult] = useState(null);
@@ -882,12 +889,11 @@ function ImportExportSection({ projectKey }) {
 
     const handleExport = () => {
         const token = localStorage.getItem("token");
-        fetch(`/api/projects/${projectKey}/issues/export`, {
+        apiRequest(`/api/projects/${projectKey}/issues/export`, {
             headers: { Authorization: `Bearer ${token}` },
         })
-            .then((r) => r.blob())
-            .then((blob) => {
-                const url = URL.createObjectURL(blob);
+            .then((response) => {
+                const url = URL.createObjectURL(response.data);
                 const a = document.createElement("a");
                 a.href = url;
                 a.download = `${projectKey}-issues.csv`;
@@ -907,13 +913,12 @@ function ImportExportSection({ projectKey }) {
             const token = localStorage.getItem("token");
             const form = new FormData();
             form.append("file", file);
-            const r = await fetch(`/api/projects/${projectKey}/issues/import`, {
+            const response = await apiRequest(`/api/projects/${projectKey}/issues/import`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
                 body: form,
             });
-            const data = await r.json();
-            if (!r.ok) throw new Error(data.message || "Import failed");
+            const data = response.data;
             setResult(data);
             if (data.created > 0) {
                 toast.success(`Imported ${data.created} issue(s)`);

@@ -41,11 +41,15 @@ class ProjectServiceAuthorizationTests {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AttachmentCleanupService attachmentCleanupService;
+
     private ProjectService projectService;
 
     @BeforeEach
     void setUp() {
-        projectService = new ProjectService(projectRepository, membershipRepository, userRepository);
+        projectService = new ProjectService(
+                projectRepository, membershipRepository, userRepository, attachmentCleanupService);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         "alice", null, List.of(new SimpleGrantedAuthority(Role.ROLE_USER.name()))));

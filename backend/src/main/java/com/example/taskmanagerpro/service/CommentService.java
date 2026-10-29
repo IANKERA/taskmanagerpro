@@ -77,11 +77,11 @@ public class CommentService {
         Set<String> mentioned = extractMentions(req.getBody());
         mentioned.remove(author.getUsername()); // don't notify self
         for (String username : mentioned) {
-            userRepo.findByUsername(username).ifPresent(mentionedUser ->
-                notificationService.notifyUser(mentionedUser, t, "MENTIONED",
-                        author.getUsername() + " mentioned you in " + t.getIssueKey(),
-                        req.getBody())
-            );
+            userRepo.findByUsername(username)
+                    .filter(mentionedUser ->
+                            projectService.canAccessProject(t.getProject().getId(), mentionedUser))
+                    .ifPresent(mentionedUser -> notificationService.notifyUser(mentionedUser, t, "MENTIONED",
+                            author.getUsername() + " mentioned you in " + t.getIssueKey(), req.getBody()));
         }
 
         return c;

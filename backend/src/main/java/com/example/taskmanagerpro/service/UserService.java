@@ -81,6 +81,9 @@ public class UserService {
     }
 
     public User registerUser(String username, String password) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username cannot be empty.");
+        }
         if (userRepository.findByUsername(username).isPresent()) {
             throw new ResponseStatusException(CONFLICT, "Username already taken");
         }

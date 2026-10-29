@@ -4,6 +4,7 @@ import com.example.taskmanagerpro.model.ActivityLog;
 import com.example.taskmanagerpro.model.ProjectMembership;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.User;
+import com.example.taskmanagerpro.model.enums.ProjectRole;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
 import com.example.taskmanagerpro.repository.ActivityLogRepository;
 import com.example.taskmanagerpro.repository.ProjectMembershipRepository;
@@ -136,7 +137,16 @@ public class SearchService {
         Task parent = taskRepo.findByIssueKeyWithRelations(issueKey)
                 .orElse(null);
         if (parent == null) return List.of();
+        projectService.requireProjectRole(parent.getProject().getId(),
+                ProjectRole.VIEWER, ProjectRole.MEMBER, ProjectRole.ADMIN);
         return taskRepo.findByParentId(parent.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Task> workloadTasks() {
+        List<Long> projectIds = accessibleProjectIds();
+        if (projectIds.isEmpty()) return List.of();
+        return taskRepo.findAllOpenWithRelationsByProjectIds(projectIds);
     }
 
     private List<Long> accessibleProjectIds() {

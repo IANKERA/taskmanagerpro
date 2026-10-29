@@ -70,8 +70,8 @@ function App() {
                 {/* Profile + Admin */}
                 <Route path="/profile"          element={<Profile />} />
                 <Route path="/profile/settings" element={<ProfileSettings />} />
-                <Route path="/admin/users"    element={<UserAdmin />} />
-                <Route path="/admin/audit-log" element={<AuditLogPage />} />
+                <Route path="/admin/users" element={<ProtectedRoute adminOnly><UserAdmin /></ProtectedRoute>} />
+                <Route path="/admin/audit-log" element={<ProtectedRoute adminOnly><AuditLogPage /></ProtectedRoute>} />
                 {/* Legacy pages — kept available but no longer linked prominently */}
                 <Route path="/dashboard"      element={<Dashboard />} />
                 <Route path="/tasks"          element={<MyTasks />} />

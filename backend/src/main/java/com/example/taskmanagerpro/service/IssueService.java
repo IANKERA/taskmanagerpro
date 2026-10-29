@@ -43,6 +43,7 @@ public class IssueService {
     private final IssueLinkRepository linkRepo;
     private final TimeLogRepository timeLogRepo;
     private final WorkflowEngine workflowEngine;
+    private final AttachmentCleanupService attachmentCleanupService;
 
     public IssueService(TaskRepository taskRepo,
                         UserRepository userRepo,
@@ -53,7 +54,8 @@ public class IssueService {
                         NotificationService notificationService,
                         IssueLinkRepository linkRepo,
                         TimeLogRepository timeLogRepo,
-                        WorkflowEngine workflowEngine) {
+                        WorkflowEngine workflowEngine,
+                        AttachmentCleanupService attachmentCleanupService) {
         this.taskRepo = taskRepo;
         this.userRepo = userRepo;
         this.projectService = projectService;
@@ -64,6 +66,7 @@ public class IssueService {
         this.linkRepo = linkRepo;
         this.timeLogRepo = timeLogRepo;
         this.workflowEngine = workflowEngine;
+        this.attachmentCleanupService = attachmentCleanupService;
     }
 
     @Transactional(readOnly = true)
@@ -276,6 +279,7 @@ public class IssueService {
     public void delete(String issueKey) {
         Task t = getByIssueKey(issueKey);
         projectService.requireProjectRole(t.getProject().getId(), ProjectRole.ADMIN);
+        attachmentCleanupService.enqueueForTask(t.getId());
         taskRepo.delete(t);
     }
 
@@ -345,7 +349,11 @@ public class IssueService {
     @Transactional
     public List<Task> bulkUpdate(String projectKey, com.example.taskmanagerpro.dto.BulkUpdateRequest req) {
         Project p = projectService.getByKey(projectKey);
-        projectService.requireProjectRole(p.getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
+        if (req.isDelete()) {
+            projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
+        } else {
+            projectService.requireProjectRole(p.getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
+        }
         User actor = projectService.currentUser();
 
         Sprint newSprint = null;
@@ -368,7 +376,7 @@ public class IssueService {
 
             // Delete mode
             if (req.isDelete()) {
-                activityService.logFieldChange(t, actor, "deleted", t.getIssueKey(), null);
+                attachmentCleanupService.enqueueForTask(t.getId());
                 taskRepo.delete(t);
                 continue;
             }

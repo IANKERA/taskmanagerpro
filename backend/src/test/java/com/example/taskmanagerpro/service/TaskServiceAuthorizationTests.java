@@ -49,11 +49,18 @@ class TaskServiceAuthorizationTests {
     @Mock
     private IssueKeyAllocator issueKeyAllocator;
 
+    @Mock
+    private ProjectService projectService;
+
+    @Mock
+    private AttachmentCleanupService attachmentCleanupService;
+
     private TaskService taskService;
 
     @BeforeEach
     void setUp() {
-        taskService = new TaskService(taskRepository, userService, projectRepository, issueKeyAllocator);
+        taskService = new TaskService(taskRepository, userService, projectRepository,
+                issueKeyAllocator, projectService, attachmentCleanupService);
         authenticate("alice", Role.ROLE_USER);
     }
 

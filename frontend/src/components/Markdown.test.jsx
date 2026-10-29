@@ -32,4 +32,14 @@ describe("Markdown", () => {
         renderWithProviders(<Markdown>{"```\nconst x = 1;\n```"}</Markdown>);
         expect(screen.getByText("const x = 1;")).toBeInTheDocument();
     });
+
+    it("renders untrusted HTML as text and blocks dangerous link protocols", () => {
+        renderWithProviders(
+            <Markdown>{'<img src=x onerror=alert(1)> [unsafe](javascript:alert(1))'}</Markdown>
+        );
+
+        expect(document.querySelector("img")).not.toBeInTheDocument();
+        expect(screen.getByText(/<img src=x onerror=alert\(1\)>/)).toBeInTheDocument();
+        expect(screen.getByText("unsafe")).not.toHaveAttribute("href", "javascript:alert(1)");
+    });
 });

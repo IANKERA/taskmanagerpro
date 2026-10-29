@@ -6,6 +6,7 @@ import com.example.taskmanagerpro.model.Project;
 import com.example.taskmanagerpro.model.ProjectMembership;
 import com.example.taskmanagerpro.model.User;
 import com.example.taskmanagerpro.model.enums.ProjectRole;
+import com.example.taskmanagerpro.model.enums.Role;
 import com.example.taskmanagerpro.repository.ProjectMembershipRepository;
 import com.example.taskmanagerpro.repository.ProjectRepository;
 import com.example.taskmanagerpro.repository.UserRepository;
@@ -26,13 +27,16 @@ public class ProjectService {
     private final ProjectRepository projectRepo;
     private final ProjectMembershipRepository membershipRepo;
     private final UserRepository userRepo;
+    private final AttachmentCleanupService attachmentCleanupService;
 
     public ProjectService(ProjectRepository projectRepo,
                           ProjectMembershipRepository membershipRepo,
-                          UserRepository userRepo) {
+                          UserRepository userRepo,
+                          AttachmentCleanupService attachmentCleanupService) {
         this.projectRepo = projectRepo;
         this.membershipRepo = membershipRepo;
         this.userRepo = userRepo;
+        this.attachmentCleanupService = attachmentCleanupService;
     }
 
     @Transactional(readOnly = true)
@@ -73,6 +77,7 @@ public class ProjectService {
     public void deleteProject(String key) {
         Project p = getByKey(key);
         requireProjectRole(p.getId(), ProjectRole.ADMIN);
+        attachmentCleanupService.enqueueForProject(p.getId());
         projectRepo.delete(p);
     }
 
@@ -178,6 +183,12 @@ public class ProjectService {
         if (isCurrentUserGlobalAdmin()) return true;
         User u = currentUser();
         return membershipRepo.existsByProjectAndUserWithRoleIn(projectId, u.getId(), List.of(roles));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canAccessProject(Long projectId, User user) {
+        return user.getRole() == Role.ROLE_ADMIN
+                || membershipRepo.findByProjectIdAndUserId(projectId, user.getId()).isPresent();
     }
 
     private boolean isCurrentUserGlobalAdmin() {

@@ -5,12 +5,10 @@ import com.example.taskmanagerpro.dto.AuthResponse;
 import com.example.taskmanagerpro.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -27,11 +25,12 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody AuthRequest request) {
         try {
-            userService.registerUser(request.getUsername(), request.getPassword());
-            return ResponseEntity.ok("User registered successfully");
+            userService.validateNewPassword(request.getPassword());
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+        userService.registerUser(request.getUsername(), request.getPassword());
+        return ResponseEntity.ok("User registered successfully");
     }
 
     // User login

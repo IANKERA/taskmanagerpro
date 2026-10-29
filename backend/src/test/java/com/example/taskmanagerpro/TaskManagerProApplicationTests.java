@@ -48,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -519,7 +520,8 @@ class TaskManagerProApplicationTests {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"test-user\",\"password\":\"weak\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Password must be at least 8 characters long."));
 
         String validRequest = "{\"username\":\"isolated-test-user\",\"password\":\"Password123!\"}";
         mockMvc.perform(post("/api/auth/register")

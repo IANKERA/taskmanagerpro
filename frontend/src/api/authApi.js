@@ -42,7 +42,13 @@ export async function registerRequest(username, password) {
         } catch {
             // Non-JSON response bodies are handled as plain text.
         }
-        throw new Error(formatApiError({ status: response.status, data }));
+        if (response.status !== 400 && response.status !== 409) {
+            throw new Error("Registration failed. Please try again later.");
+        }
+        const message = formatApiError({ status: response.status, data });
+        throw new Error(/^bad request$/i.test(message)
+            ? "Please check your username and password and try again."
+            : message);
     }
 
     return responseText;

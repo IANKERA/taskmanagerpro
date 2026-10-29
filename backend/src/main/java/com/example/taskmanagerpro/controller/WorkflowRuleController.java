@@ -7,10 +7,13 @@ import com.example.taskmanagerpro.repository.WorkflowRuleRepository;
 import com.example.taskmanagerpro.service.ProjectService;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
 @RequestMapping("/api/projects/{projectKey}/workflow-rules")
@@ -54,7 +57,8 @@ public class WorkflowRuleController {
     public RuleDTO toggle(@PathVariable String projectKey, @PathVariable Long id) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
-        WorkflowRule rule = ruleRepo.findById(id).orElseThrow();
+        WorkflowRule rule = ruleRepo.findByIdAndProject_Id(id, p.getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Workflow rule not found"));
         rule.setEnabled(!rule.isEnabled());
         ruleRepo.save(rule);
         return toDTO(rule);
@@ -64,7 +68,9 @@ public class WorkflowRuleController {
     public ResponseEntity<Void> delete(@PathVariable String projectKey, @PathVariable Long id) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
-        ruleRepo.deleteById(id);
+        WorkflowRule rule = ruleRepo.findByIdAndProject_Id(id, p.getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Workflow rule not found"));
+        ruleRepo.delete(rule);
         return ResponseEntity.noContent().build();
     }
 

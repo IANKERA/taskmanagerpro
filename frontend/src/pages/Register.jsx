@@ -36,6 +36,7 @@ export default function Register() {
                 <input
                     type="text"
                     placeholder="Username"
+                    required
                     className="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -44,10 +45,15 @@ export default function Register() {
                 <input
                     type="password"
                     placeholder="Password"
+                    required
+                    minLength={8}
                     className="w-full border p-2 rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder-slate-400"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                 />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Use at least 8 characters, including uppercase and lowercase letters, a number, and a special character.
+                </p>
 
                 <button
                     className="w-full bg-slate-900 dark:bg-blue-600 text-white py-2 rounded hover:bg-slate-800 dark:hover:bg-blue-700"

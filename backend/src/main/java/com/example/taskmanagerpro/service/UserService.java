@@ -6,9 +6,12 @@ import com.example.taskmanagerpro.model.enums.Role;
 import com.example.taskmanagerpro.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
+
+import static org.springframework.http.HttpStatus.CONFLICT;
 
 @Service
 public class UserService {
@@ -79,8 +82,9 @@ public class UserService {
 
     public User registerUser(String username, String password) {
         if (userRepository.findByUsername(username).isPresent()) {
-            throw new RuntimeException("Username already taken");
+            throw new ResponseStatusException(CONFLICT, "Username already taken");
         }
+        validateNewPassword(password);
 
         User user = new User();
         user.setUsername(username);

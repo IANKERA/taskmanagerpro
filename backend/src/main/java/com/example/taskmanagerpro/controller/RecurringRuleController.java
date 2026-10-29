@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
 @RequestMapping("/api/projects/{projectKey}/recurring-rules")
@@ -72,8 +73,8 @@ public class RecurringRuleController {
     public RuleDTO toggle(@PathVariable String projectKey, @PathVariable Long id) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
-        RecurringRule rule = ruleRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Rule not found"));
+        RecurringRule rule = ruleRepo.findByIdAndProject_Id(id, p.getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Recurring rule not found"));
         rule.setEnabled(!rule.isEnabled());
         if (rule.isEnabled()) {
             rule.setNextRunAt(RecurringIssueService.computeNext(rule.getCronExpression(), LocalDateTime.now()));
@@ -86,7 +87,9 @@ public class RecurringRuleController {
     public ResponseEntity<Void> delete(@PathVariable String projectKey, @PathVariable Long id) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
-        ruleRepo.deleteById(id);
+        RecurringRule rule = ruleRepo.findByIdAndProject_Id(id, p.getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Recurring rule not found"));
+        ruleRepo.delete(rule);
         return ResponseEntity.noContent().build();
     }
 

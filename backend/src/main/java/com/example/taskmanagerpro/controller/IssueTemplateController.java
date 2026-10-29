@@ -8,8 +8,10 @@ import com.example.taskmanagerpro.model.enums.TaskPriority;
 import com.example.taskmanagerpro.repository.IssueTemplateRepository;
 import com.example.taskmanagerpro.service.ProjectService;
 import lombok.Data;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -55,7 +57,9 @@ public class IssueTemplateController {
     public ResponseEntity<Void> delete(@PathVariable String projectKey, @PathVariable Long id) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
-        templateRepo.deleteById(id);
+        IssueTemplate template = templateRepo.findByIdAndProject_Id(id, p.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue template not found"));
+        templateRepo.delete(template);
         return ResponseEntity.noContent().build();
     }
 

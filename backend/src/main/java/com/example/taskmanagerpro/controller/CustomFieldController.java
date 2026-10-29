@@ -11,9 +11,11 @@ import com.example.taskmanagerpro.repository.CustomFieldValueRepository;
 import com.example.taskmanagerpro.service.IssueService;
 import com.example.taskmanagerpro.service.ProjectService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -67,8 +69,10 @@ public class CustomFieldController {
     public ResponseEntity<Void> deleteField(@PathVariable String projectKey, @PathVariable Long fieldId) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
+        CustomFieldDefinition field = fieldRepo.findByIdAndProject_Id(fieldId, p.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Custom field not found"));
         valueRepo.deleteByFieldId(fieldId);
-        fieldRepo.deleteById(fieldId);
+        fieldRepo.delete(field);
         return ResponseEntity.noContent().build();
     }
 
@@ -100,13 +104,17 @@ public class CustomFieldController {
         projectService.requireProjectRole(t.getProject().getId(), ProjectRole.MEMBER, ProjectRole.ADMIN);
 
         for (var req : reqs) {
-            var existing = valueRepo.findByTaskIdAndFieldId(t.getId(), req.getFieldId());
+            CustomFieldDefinition field = fieldRepo.findByIdAndProject_Id(
+                            req.getFieldId(), t.getProject().getId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST, "Custom field does not belong to this project's issue"));
+            var existing = valueRepo.findByTaskIdAndFieldId(t.getId(), field.getId());
             if (req.getValue() == null || req.getValue().isBlank()) {
                 existing.ifPresent(valueRepo::delete);
             } else {
                 CustomFieldValue v = existing.orElse(CustomFieldValue.builder()
                         .task(t)
-                        .field(fieldRepo.getReferenceById(req.getFieldId()))
+                        .field(field)
                         .build());
                 v.setValue(req.getValue());
                 valueRepo.save(v);

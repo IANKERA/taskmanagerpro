@@ -4,6 +4,7 @@ import com.example.taskmanagerpro.model.Project;
 import com.example.taskmanagerpro.model.TimeLog;
 import com.example.taskmanagerpro.repository.TimeLogRepository;
 import com.example.taskmanagerpro.service.ProjectService;
+import com.example.taskmanagerpro.util.CsvUtils;
 import lombok.Data;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -90,12 +91,12 @@ public class TimeReportController {
         StringBuilder csv = new StringBuilder();
         csv.append("Issue Key,Issue Title,User,Minutes,Hours,Description,Date\n");
         for (TimeLog tl : logs) {
-            csv.append(escapeCsv(tl.getTask().getIssueKey())).append(",");
-            csv.append(escapeCsv(tl.getTask().getTitle())).append(",");
-            csv.append(escapeCsv(tl.getUser().getUsername())).append(",");
+            csv.append(CsvUtils.escape(tl.getTask().getIssueKey())).append(",");
+            csv.append(CsvUtils.escape(tl.getTask().getTitle())).append(",");
+            csv.append(CsvUtils.escape(tl.getUser().getUsername())).append(",");
             csv.append(tl.getMinutes()).append(",");
             csv.append(String.format("%.1f", tl.getMinutes() / 60.0)).append(",");
-            csv.append(escapeCsv(tl.getDescription())).append(",");
+            csv.append(CsvUtils.escape(tl.getDescription())).append(",");
             csv.append(tl.getLoggedAt()).append("\n");
         }
 
@@ -103,14 +104,6 @@ public class TimeReportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + projectKey + "-time-report.csv")
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(csv.toString().getBytes());
-    }
-
-    private String escapeCsv(String s) {
-        if (s == null) return "";
-        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
-            return "\"" + s.replace("\"", "\"\"") + "\"";
-        }
-        return s;
     }
 
     @Data public static class TimeReportResponse {

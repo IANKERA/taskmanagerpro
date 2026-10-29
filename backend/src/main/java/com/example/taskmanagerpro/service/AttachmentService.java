@@ -121,7 +121,9 @@ public class AttachmentService {
         }
         try {
             Files.deleteIfExists(Paths.get(a.getStoragePath()));
-        } catch (IOException ignored) {}
+        } catch (IOException e) {
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR, "Failed to delete attachment file");
+        }
         attachmentRepo.delete(a);
     }
 }

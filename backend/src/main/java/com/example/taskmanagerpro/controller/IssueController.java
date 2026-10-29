@@ -9,6 +9,7 @@ import com.example.taskmanagerpro.repository.TimeLogRepository;
 import com.example.taskmanagerpro.repository.UserRepository;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.service.IssueService;
+import com.example.taskmanagerpro.util.CsvUtils;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
@@ -95,15 +96,15 @@ public class IssueController {
         writer.println("Key,Title,Status,Priority,Type,Assignee,Story Points,Due Date,Sprint");
         for (TaskDTO t : issues) {
             writer.printf("%s,%s,%s,%s,%s,%s,%s,%s,%s%n",
-                    csvEscape(t.getIssueKey()),
-                    csvEscape(t.getTitle()),
+                    CsvUtils.escape(t.getIssueKey()),
+                    CsvUtils.escape(t.getTitle()),
                     t.getStatus(),
                     t.getPriority(),
                     t.getIssueType(),
-                    csvEscape(t.getAssigneeUsername()),
+                    CsvUtils.escape(t.getAssigneeUsername()),
                     t.getStoryPoints() != null ? t.getStoryPoints() : "",
                     t.getDueDate() != null ? t.getDueDate() : "",
-                    csvEscape(t.getSprintName())
+                    CsvUtils.escape(t.getSprintName())
             );
         }
         writer.flush();
@@ -344,11 +345,4 @@ public class IssueController {
         return Mapper.toTaskDTOList(issueService.bulkUpdate(projectKey, req));
     }
 
-    private String csvEscape(String val) {
-        if (val == null) return "";
-        if (val.contains(",") || val.contains("\"") || val.contains("\n")) {
-            return "\"" + val.replace("\"", "\"\"") + "\"";
-        }
-        return val;
-    }
 }

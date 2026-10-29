@@ -1,3 +1,5 @@
+import { formatApiError } from "./errorMessage";
+
 const API_URL = `${(
     import.meta.env.VITE_API_URL ||
     "https://taskmanagerpro-7m9s.onrender.com"
@@ -33,9 +35,17 @@ export async function registerRequest(username, password) {
         body: JSON.stringify({ username, password }),
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-        throw new Error(await response.text());
+        let data = responseText;
+        try {
+            data = JSON.parse(responseText);
+        } catch {
+            // Non-JSON response bodies are handled as plain text.
+        }
+        throw new Error(formatApiError({ status: response.status, data }));
     }
 
-    return response.text();
+    return responseText;
 }

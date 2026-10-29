@@ -13,8 +13,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,5 +44,13 @@ class UserRegistrationAuthorizationTests {
         verify(userRepository).save(userCaptor.capture());
         assertEquals(Role.ROLE_USER, userCaptor.getValue().getRole());
         assertEquals("encoded-password", userCaptor.getValue().getPassword());
+    }
+
+    @Test
+    void registrationRejectsWeakPasswordsBeforeSaving() {
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.registerUser("new-user", "weak"));
+
+        verify(userRepository, never()).save(any(User.class));
     }
 }

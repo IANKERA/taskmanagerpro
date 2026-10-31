@@ -74,6 +74,28 @@ describe("ProtectedRoute", () => {
         expect(screen.queryByRole("heading", { name: "Admin content" })).not.toBeInTheDocument();
     });
 
+    it("does not block ordinary protected routes while the profile refreshes", () => {
+        localStorage.setItem("token", tokenWithPayload({ sub: "user" }));
+        api.get.mockReturnValue(new Promise(() => {}));
+
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AuthProvider>
+                    <MemoryRouter initialEntries={["/projects"]}>
+                        <Routes>
+                            <Route path="/projects" element={
+                                <ProtectedRoute><h1>Projects</h1></ProtectedRoute>
+                            } />
+                        </Routes>
+                    </MemoryRouter>
+                </AuthProvider>
+            </QueryClientProvider>
+        );
+
+        expect(screen.getByRole("heading", { name: "Projects" })).toBeInTheDocument();
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
     it("allows admins to view admin routes after the server profile loads", async () => {
         renderAdminRoute("ROLE_ADMIN");
 

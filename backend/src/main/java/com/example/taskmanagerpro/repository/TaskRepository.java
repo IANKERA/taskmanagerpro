@@ -88,6 +88,20 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @Query("""
         SELECT DISTINCT t FROM Task t
         LEFT JOIN FETCH t.assignee
+        LEFT JOIN FETCH t.reporter
+        LEFT JOIN FETCH t.project
+        LEFT JOIN FETCH t.labels
+        LEFT JOIN FETCH t.watchers
+        LEFT JOIN FETCH t.sprint
+        LEFT JOIN FETCH t.parent
+        WHERE t.project.id IN :projectIds
+        ORDER BY t.id
+    """)
+    List<Task> findByProjectIdsWithRelations(@Param("projectIds") List<Long> projectIds);
+
+    @Query("""
+        SELECT DISTINCT t FROM Task t
+        LEFT JOIN FETCH t.assignee
         LEFT JOIN FETCH t.project
         WHERE t.status <> com.example.taskmanagerpro.model.enums.TaskStatus.DONE
         ORDER BY t.id

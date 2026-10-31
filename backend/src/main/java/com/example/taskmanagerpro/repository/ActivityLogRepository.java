@@ -19,6 +19,16 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
 
     @Query("""
         SELECT a FROM ActivityLog a
+        JOIN FETCH a.task
+        WHERE a.task.project.id = :projectId
+          AND a.activityType = com.example.taskmanagerpro.model.enums.ActivityType.FIELD_CHANGED
+          AND a.field = 'status'
+        ORDER BY a.at ASC, a.id ASC
+    """)
+    List<ActivityLog> findStatusChangesByProjectId(@Param("projectId") Long projectId);
+
+    @Query("""
+        SELECT a FROM ActivityLog a
         LEFT JOIN FETCH a.actor
         LEFT JOIN FETCH a.task t
         LEFT JOIN FETCH t.project

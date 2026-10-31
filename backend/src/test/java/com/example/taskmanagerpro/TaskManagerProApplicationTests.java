@@ -46,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -533,6 +534,47 @@ class TaskManagerProApplicationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void cfdEndpointReturnsStatusTransitionsForProject() throws Exception {
+        ProjectFixture fixture = createProject("ADMIN");
+        long taskId = createTask(fixture, "cfd-task", null, null);
+        jdbcTemplate.update("""
+            INSERT INTO activity_log(task_id, actor_id, activity_type, field, old_value, new_value, at)
+            VALUES (?, ?, 'FIELD_CHANGED', 'status', 'PENDING', 'IN_PROGRESS', CURRENT_TIMESTAMP - INTERVAL '1 day')
+        """, taskId, fixture.userId());
+
+        authenticate(fixture.username());
+
+        mockMvc.perform(get("/api/projects/" + fixture.projectKey() + "/analytics/cfd?days=7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[-1].IN_PROGRESS").value(1));
+    }
+
+    @Test
+    void advancedSearchFindsIssuesAcrossAccessibleProjectsWithoutPerProjectLoop() {
+        ProjectFixture p1 = createProject("ADMIN");
+        ProjectFixture p2 = createProject("ADMIN");
+        long t1 = createTask(p1, "task-p1", null, null);
+        long t2 = createTask(p2, "task-p2", null, null);
+
+        jdbcTemplate.update(
+                "INSERT INTO project_memberships(project_id, user_id, project_role) VALUES (?, ?, 'MEMBER')",
+                p2.projectId(), p1.userId());
+
+        authenticate(p1.username());
+
+        List<com.example.taskmanagerpro.model.Task> results = searchService.advancedSearch(null, null, null, null, null, null, 10);
+        List<Long> resultIds = results.stream().map(com.example.taskmanagerpro.model.Task::getId).toList();
+        assertTrue(resultIds.contains(t1));
+        assertTrue(resultIds.contains(t2));
+
+        List<com.example.taskmanagerpro.model.Task> scopedResults = searchService.advancedSearch(null, null, null, null, null, p1.projectKey(), 10);
+        List<Long> scopedIds = scopedResults.stream().map(com.example.taskmanagerpro.model.Task::getId).toList();
+        assertTrue(scopedIds.contains(t1));
+        assertFalse(scopedIds.contains(t2));
     }
 
     private void assertTimestampColumn(String columnName) {

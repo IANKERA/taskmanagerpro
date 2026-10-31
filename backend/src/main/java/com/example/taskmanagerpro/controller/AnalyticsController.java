@@ -200,13 +200,14 @@ public class AnalyticsController {
             statusHistory.put(t.getId(), hist);
         }
 
-        // Overlay actual status change events from activity logs
-        for (Task t : issues) {
-            List<ActivityLog> logs = activityLogRepo.findByTaskIdWithActor(t.getId());
+        // Overlay actual status change events from activity logs in a single batch query
+        if (!issues.isEmpty()) {
+            List<ActivityLog> logs = activityLogRepo.findStatusChangesByProjectId(p.getId());
             for (ActivityLog log : logs) {
-                if ("FIELD_CHANGED".equals(log.getActivityType()) && "status".equals(log.getField())) {
+                TreeMap<LocalDate, String> hist = statusHistory.get(log.getTask().getId());
+                if (hist != null && log.getNewValue() != null) {
                     LocalDate day = log.getAt().toLocalDate();
-                    statusHistory.get(t.getId()).put(day, log.getNewValue());
+                    hist.put(day, log.getNewValue());
                 }
             }
         }

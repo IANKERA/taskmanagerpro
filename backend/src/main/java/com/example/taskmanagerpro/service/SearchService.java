@@ -52,13 +52,13 @@ public class SearchService {
         List<Long> projectIds = accessibleProjectIds();
         if (projectIds.isEmpty()) return List.of();
 
-        // If projectKey filter, narrow down
+        // If projectKey filter, narrow down with a single lookup
         if (projectKey != null && !projectKey.isBlank()) {
-            projectIds = projectIds.stream()
-                    .filter(id -> projectRepo.findById(id)
-                            .map(p -> p.getKey().equals(projectKey)).orElse(false))
-                    .toList();
-            if (projectIds.isEmpty()) return List.of();
+            var project = projectRepo.findByKey(projectKey);
+            if (project.isEmpty() || !projectIds.contains(project.get().getId())) {
+                return List.of();
+            }
+            projectIds = List.of(project.get().getId());
         }
 
         // Start with text search or all issues
@@ -66,10 +66,7 @@ public class SearchService {
         if (query != null && !query.isBlank()) {
             results = taskRepo.searchInProjects(query, projectIds);
         } else {
-            results = new java.util.ArrayList<>();
-            for (Long pid : projectIds) {
-                results.addAll(taskRepo.findByProjectIdWithRelations(pid));
-            }
+            results = new java.util.ArrayList<>(taskRepo.findByProjectIdsWithRelations(projectIds));
             results.sort((a, b) -> {
                 if (b.getUpdatedAt() != null && a.getUpdatedAt() != null)
                     return b.getUpdatedAt().compareTo(a.getUpdatedAt());

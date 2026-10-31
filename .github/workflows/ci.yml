@@ -25,10 +25,13 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
 
-      # The application-context integration test starts PostgreSQL with Testcontainers.
-      # CI runs all other Maven tests; the integration test requires Docker.
-      - name: Run non-Docker tests and package backend
-        run: bash ./mvnw -B -ntp -f backend/pom.xml '-Dtest=!TaskManagerProApplicationTests' package
+      # ubuntu-latest runners have Docker available, so Testcontainers can start
+      # a real PostgreSQL container for TaskManagerProApplicationTests.
+      - name: Run all backend tests
+        run: bash ./mvnw -B -ntp -f backend/pom.xml test
+
+      - name: Package backend (skip test re-run)
+        run: bash ./mvnw -B -ntp -f backend/pom.xml package -DskipTests
 
   frontend:
     name: Frontend tests and production build

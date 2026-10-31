@@ -9,10 +9,13 @@ export default function Login() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     async function handleSubmit(e) {
         e.preventDefault();
+        if (isLoading) return;
         setError(null);
+        setIsLoading(true);
 
         try {
             const data = await loginRequest(username, password);
@@ -20,6 +23,8 @@ export default function Login() {
             navigate("/projects");
         } catch (e) {
             setError("Invalid username or password");
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -51,9 +56,19 @@ export default function Login() {
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                        disabled={isLoading}
+                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                        Login
+                        {isLoading ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <span
+                                    role="status"
+                                    aria-label="Signing in"
+                                    className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                                />
+                                Signing in…
+                            </span>
+                        ) : "Login"}
                     </button>
                 </form>
                 <div className="text-center mt-4">

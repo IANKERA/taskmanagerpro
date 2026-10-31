@@ -5,7 +5,14 @@ import com.example.taskmanagerpro.model.ProjectMembership;
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.User;
 import com.example.taskmanagerpro.model.enums.ProjectRole;
+import com.example.taskmanagerpro.model.enums.IssueType;
+import com.example.taskmanagerpro.model.enums.TaskPriority;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
+import org.springframework.data.domain.PageRequest;
+
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import com.example.taskmanagerpro.repository.ActivityLogRepository;
 import com.example.taskmanagerpro.repository.ProjectMembershipRepository;
 import com.example.taskmanagerpro.repository.ProjectRepository;
@@ -54,42 +61,75 @@ public class SearchService {
 
         // If projectKey filter, narrow down with a single lookup
         if (projectKey != null && !projectKey.isBlank()) {
-            var project = projectRepo.findByKey(projectKey);
+            var project = projectRepo.findByKey(projectKey.trim());
             if (project.isEmpty() || !projectIds.contains(project.get().getId())) {
                 return List.of();
             }
             projectIds = List.of(project.get().getId());
         }
 
-        // Start with text search or all issues
-        List<Task> results;
-        if (query != null && !query.isBlank()) {
-            results = taskRepo.searchInProjects(query, projectIds);
-        } else {
-            results = new java.util.ArrayList<>(taskRepo.findByProjectIdsWithRelations(projectIds));
-            results.sort((a, b) -> {
-                if (b.getUpdatedAt() != null && a.getUpdatedAt() != null)
-                    return b.getUpdatedAt().compareTo(a.getUpdatedAt());
-                return Long.compare(b.getId(), a.getId());
-            });
+        // Safely parse enums. An invalid enum value matches 0 tasks, matching previous behavior.
+        TaskStatus taskStatus = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                taskStatus = TaskStatus.valueOf(status.trim());
+            } catch (IllegalArgumentException e) {
+                return List.of();
+            }
         }
 
-        // Apply filters
-        var stream = results.stream();
-        if (status != null && !status.isBlank())
-            stream = stream.filter(t -> t.getStatus().name().equals(status));
-        if (priority != null && !priority.isBlank())
-            stream = stream.filter(t -> t.getPriority().name().equals(priority));
-        if (issueType != null && !issueType.isBlank())
-            stream = stream.filter(t -> t.getIssueType().name().equals(issueType));
+        TaskPriority taskPriority = null;
+        if (priority != null && !priority.isBlank()) {
+            try {
+                taskPriority = TaskPriority.valueOf(priority.trim());
+            } catch (IllegalArgumentException e) {
+                return List.of();
+            }
+        }
+
+        IssueType taskIssueType = null;
+        if (issueType != null && !issueType.isBlank()) {
+            try {
+                taskIssueType = IssueType.valueOf(issueType.trim());
+            } catch (IllegalArgumentException e) {
+                return List.of();
+            }
+        }
+
+        boolean unassignedOnly = false;
+        String assigneeUsername = null;
         if (assignee != null && !assignee.isBlank()) {
-            if (assignee.equals("__unassigned__"))
-                stream = stream.filter(t -> t.getAssignee() == null);
-            else
-                stream = stream.filter(t -> t.getAssignee() != null && t.getAssignee().getUsername().equals(assignee));
+            String trimmedAssignee = assignee.trim();
+            if ("__unassigned__".equals(trimmedAssignee)) {
+                unassignedOnly = true;
+            } else {
+                assigneeUsername = trimmedAssignee;
+            }
         }
 
-        return stream.limit(limit).toList();
+        String cleanQuery = (query != null && !query.isBlank()) ? query.trim() : null;
+        int pageLimit = Math.max(1, limit);
+
+        // Step 1: Query ordered task IDs with database-level filtering, sorting, and LIMIT
+        List<Long> taskIds = taskRepo.findMatchingTaskIds(
+                projectIds, cleanQuery, taskStatus, taskPriority, taskIssueType,
+                unassignedOnly, assigneeUsername, PageRequest.of(0, pageLimit));
+
+        if (taskIds.isEmpty()) {
+            return List.of();
+        }
+
+        // Step 2: Hydrate full entities and relationships for only the paginated IDs
+        List<Task> hydratedTasks = taskRepo.findByIdsWithRelations(taskIds);
+
+        // Restore exact database-level ordering from Step 1
+        Map<Long, Task> taskMap = hydratedTasks.stream()
+                .collect(Collectors.toMap(Task::getId, Function.identity()));
+
+        return taskIds.stream()
+                .map(taskMap::get)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     @Transactional(readOnly = true)

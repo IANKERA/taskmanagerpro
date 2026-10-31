@@ -2,6 +2,7 @@ package com.example.taskmanagerpro.repository;
 
 import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.enums.TaskPriority;
+import com.example.taskmanagerpro.model.enums.IssueType;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -98,6 +99,45 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
         ORDER BY t.id
     """)
     List<Task> findByProjectIdsWithRelations(@Param("projectIds") List<Long> projectIds);
+
+    @Query("""
+        SELECT DISTINCT t FROM Task t
+        LEFT JOIN FETCH t.assignee
+        LEFT JOIN FETCH t.reporter
+        LEFT JOIN FETCH t.project
+        LEFT JOIN FETCH t.labels
+        LEFT JOIN FETCH t.watchers
+        LEFT JOIN FETCH t.sprint
+        LEFT JOIN FETCH t.parent
+        WHERE t.id IN :ids
+    """)
+    List<Task> findByIdsWithRelations(@Param("ids") List<Long> ids);
+
+    @Query("""
+        SELECT t.id FROM Task t
+        LEFT JOIN t.assignee a
+        WHERE t.project.id IN :projectIds
+          AND (:q IS NULL OR :q = ''
+               OR LOWER(t.title) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(t.issueKey) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(t.description) LIKE LOWER(CONCAT('%', :q, '%')))
+          AND (:status IS NULL OR t.status = :status)
+          AND (:priority IS NULL OR t.priority = :priority)
+          AND (:issueType IS NULL OR t.issueType = :issueType)
+          AND ((:unassignedOnly = true AND t.assignee IS NULL)
+               OR (:assigneeUsername IS NOT NULL AND a.username = :assigneeUsername)
+               OR (:unassignedOnly = false AND :assigneeUsername IS NULL))
+        ORDER BY t.updatedAt DESC NULLS LAST, t.id DESC
+    """)
+    List<Long> findMatchingTaskIds(@Param("projectIds") List<Long> projectIds,
+                                   @Param("q") String q,
+                                   @Param("status") TaskStatus status,
+                                   @Param("priority") TaskPriority priority,
+                                   @Param("issueType") IssueType issueType,
+                                   @Param("unassignedOnly") boolean unassignedOnly,
+                                   @Param("assigneeUsername") String assigneeUsername,
+                                   Pageable pageable);
+
 
     @Query("""
         SELECT DISTINCT t FROM Task t

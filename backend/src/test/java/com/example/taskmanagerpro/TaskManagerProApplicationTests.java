@@ -586,6 +586,82 @@ class TaskManagerProApplicationTests {
         assertFalse(scopedIds.contains(t2));
     }
 
+    @Test
+    void advancedSearchAppliesDatabaseLimitAndStableOrdering() {
+        ProjectFixture fixture = createProject("ADMIN");
+        long t1 = createTask(fixture, "order-1", null, null);
+        long t2 = createTask(fixture, "order-2", null, null);
+        long t3 = createTask(fixture, "order-3", null, null);
+        long t4 = createTask(fixture, "order-4", null, null);
+
+        jdbcTemplate.update("UPDATE tasks SET updated_at = CURRENT_TIMESTAMP - INTERVAL '4 hours' WHERE id = ?", t1);
+        jdbcTemplate.update("UPDATE tasks SET updated_at = CURRENT_TIMESTAMP - INTERVAL '3 hours' WHERE id = ?", t2);
+        jdbcTemplate.update("UPDATE tasks SET updated_at = CURRENT_TIMESTAMP - INTERVAL '2 hours' WHERE id = ?", t3);
+        jdbcTemplate.update("UPDATE tasks SET updated_at = CURRENT_TIMESTAMP - INTERVAL '1 hour' WHERE id = ?", t4);
+
+        authenticate(fixture.username());
+
+        List<com.example.taskmanagerpro.model.Task> results = searchService.advancedSearch(
+                null, null, null, null, null, fixture.projectKey(), 2);
+
+        assertEquals(2, results.size());
+        assertEquals(t4, results.get(0).getId());
+        assertEquals(t3, results.get(1).getId());
+    }
+
+    @Test
+    void advancedSearchFiltersByStatusPriorityTypeAndAssigneeInPostgreSql() {
+        ProjectFixture fixture = createProject("ADMIN");
+        long tMatch = createTask(fixture, "match-target", null, fixture.userId());
+        long tWrongStatus = createTask(fixture, "wrong-status", null, fixture.userId());
+        long tUnassigned = createTask(fixture, "unassigned-task", null, null);
+
+        jdbcTemplate.update("UPDATE tasks SET status = 'IN_PROGRESS', priority = 'HIGH', issue_type = 'BUG' WHERE id = ?", tMatch);
+        jdbcTemplate.update("UPDATE tasks SET status = 'PENDING', priority = 'HIGH', issue_type = 'BUG' WHERE id = ?", tWrongStatus);
+        jdbcTemplate.update("UPDATE tasks SET status = 'IN_PROGRESS', priority = 'LOW', issue_type = 'TASK' WHERE id = ?", tUnassigned);
+
+        authenticate(fixture.username());
+
+        // Multi-filter test
+        List<com.example.taskmanagerpro.model.Task> multiFilter = searchService.advancedSearch(
+                "match", "IN_PROGRESS", "HIGH", "BUG", fixture.username(), fixture.projectKey(), 10);
+        assertEquals(1, multiFilter.size());
+        assertEquals(tMatch, multiFilter.get(0).getId());
+
+        // __unassigned__ filter test
+        List<com.example.taskmanagerpro.model.Task> unassignedOnly = searchService.advancedSearch(
+                null, null, null, null, "__unassigned__", fixture.projectKey(), 10);
+        List<Long> unassignedIds = unassignedOnly.stream().map(com.example.taskmanagerpro.model.Task::getId).toList();
+        assertTrue(unassignedIds.contains(tUnassigned));
+        assertFalse(unassignedIds.contains(tMatch));
+
+        // Invalid enum returns empty without error
+        List<com.example.taskmanagerpro.model.Task> invalidEnum = searchService.advancedSearch(
+                null, "INVALID_STATUS", null, null, null, fixture.projectKey(), 10);
+        assertTrue(invalidEnum.isEmpty());
+    }
+
+    @Test
+    void advancedSearchEndpointReturnsPopulatedTaskDtoRelationships() throws Exception {
+        ProjectFixture fixture = createProject("ADMIN");
+        long taskId = createTask(fixture, "dto-task", null, fixture.userId());
+        jdbcTemplate.update("UPDATE tasks SET status = 'IN_PROGRESS', priority = 'HIGH', issue_type = 'BUG' WHERE id = ?", taskId);
+
+        String token = jwtService.generateToken(fixture.username());
+
+        mockMvc.perform(get("/api/search/advanced?projectKey=" + fixture.projectKey() + "&limit=10")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].issueKey").value(fixture.projectKey() + "-dto-task"))
+                .andExpect(jsonPath("$[0].title").value("dto-task"))
+                .andExpect(jsonPath("$[0].status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$[0].priority").value("HIGH"))
+                .andExpect(jsonPath("$[0].issueType").value("BUG"))
+                .andExpect(jsonPath("$[0].projectKey").value(fixture.projectKey()))
+                .andExpect(jsonPath("$[0].assigneeUsername").value(fixture.username()));
+    }
+
     private void assertTimestampColumn(String columnName) {
         var column = jdbcTemplate.queryForMap(
                 "SELECT data_type, is_nullable, column_default FROM information_schema.columns "

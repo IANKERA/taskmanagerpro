@@ -17,41 +17,32 @@ function TaskCard({ id, title, status, priority, dueDate, assignee, assigneeUser
     };
 
     return (
-        <div className="bg-white shadow p-4 rounded-lg border border-slate-200">
-            <h3 className="text-lg font-semibold">{title}</h3>
+        <article className="app-surface flex min-w-0 flex-col p-4 sm:p-5">
+            <h3 className="break-words text-base font-semibold text-slate-900 dark:text-white">{title}</h3>
 
-            <p className="text-sm text-slate-600 mt-1">
-                Status: <strong>{status}</strong>
-            </p>
+            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-slate-600 dark:text-slate-300">
+                <div><dt className="text-xs text-slate-400">Status</dt><dd className="truncate font-medium">{status}</dd></div>
+                <div><dt className="text-xs text-slate-400">Priority</dt><dd className="truncate font-medium">{priority}</dd></div>
+                <div><dt className="text-xs text-slate-400">Due</dt><dd className="truncate">{dueDate || "No date"}</dd></div>
+                <div><dt className="text-xs text-slate-400">Assignee</dt><dd className="truncate">{assignedTo || "Unassigned"}</dd></div>
+            </dl>
 
-            <p className="text-sm text-slate-600">
-                Priority: <strong>{priority}</strong>
-            </p>
-
-            <p className="text-sm text-slate-600">
-                Due: {dueDate || "No date"}
-            </p>
-
-            <p className="text-sm text-slate-600">
-                Assignee: <strong>{assignedTo || "Unassigned"}</strong>
-            </p>
-
-            <div className="flex gap-2 mt-3">
+            <div className="mt-4 flex gap-2">
                 <button
                     onClick={handleDelete}
-                    className="px-4 py-1.5 bg-red-600 text-white text-sm rounded shadow hover:bg-red-700"
+                    className="min-h-11 flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
                 >
                     Delete
                 </button>
 
                 <Link
                     to={`/edit-task/${id}`}
-                    className="mt-2 px-4 py-1.5 bg-blue-600 text-white text-sm rounded shadow hover:bg-blue-700 inline-block"
+                    className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                     Edit
                 </Link>
             </div>
-        </div>
+        </article>
     );
 }
 

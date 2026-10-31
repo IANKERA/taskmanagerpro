@@ -322,8 +322,8 @@ export default function BoardView() {
             ) : listView ? (
                 /* Compact list view */
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                    <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-x-3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
-                        <span>Status</span><span>Issue</span><span>Type</span><span>Priority</span><span>Assignee</span><span>Due</span>
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 bg-slate-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <span>Status</span><span>Issue</span><span>Priority</span>
                     </div>
                     {issues.length === 0 ? (
                         <div className="p-6 text-center text-sm text-slate-500 dark:text-slate-400">No issues match filters</div>
@@ -331,21 +331,26 @@ export default function BoardView() {
                             <button
                                 key={issue.id}
                                 onClick={() => navigate(`/projects/${projectKey}/board/${issue.issueKey}`)}
-                                className="w-full grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-x-3 px-3 py-2 items-center text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                                className="w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-slate-100 px-3 py-3 text-left hover:bg-slate-50 last:border-0 dark:border-slate-700/50 dark:hover:bg-slate-700/50 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto] sm:py-2"
                             >
                                 <span className={`w-2.5 h-2.5 rounded-full ${
                                     issue.status === "DONE" ? "bg-green-500" : issue.status === "IN_PROGRESS" ? "bg-blue-500" : "bg-slate-400"
                                 }`} />
-                                <span className="flex items-center gap-2 min-w-0">
+                                    <span className="min-w-0">
+                                        <span className="flex min-w-0 items-center gap-2">
                                     <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 shrink-0">{issue.issueKey}</span>
                                     <span className={`text-sm truncate ${issue.status === "DONE" ? "line-through text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>{issue.title}</span>
-                                </span>
-                                <span className="text-[10px] uppercase text-slate-500 dark:text-slate-400">{issue.issueType}</span>
+                                        </span>
+                                        <span className="mt-1 block truncate text-[11px] text-slate-500 sm:hidden dark:text-slate-400">
+                                            {issue.assigneeUsername || "Unassigned"} · {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "No due date"}
+                                        </span>
+                                    </span>
+                                <span className="hidden text-[10px] uppercase text-slate-500 sm:block dark:text-slate-400">{issue.issueType}</span>
                                 <span className={`w-2 h-2 rounded-full ${
                                     issue.priority === "HIGH" ? "bg-red-500" : issue.priority === "MEDIUM" ? "bg-amber-400" : "bg-slate-300"
                                 }`} />
-                                <span className="text-xs text-slate-500 dark:text-slate-400 w-20 truncate">{issue.assigneeUsername || "—"}</span>
-                                <span className="text-[10px] text-slate-400 w-16 text-right">
+                                <span className="hidden w-20 truncate text-xs text-slate-500 sm:block dark:text-slate-400">{issue.assigneeUsername || "—"}</span>
+                                <span className="hidden w-16 text-right text-[10px] text-slate-400 sm:block">
                                     {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
                                 </span>
                             </button>
@@ -404,9 +409,10 @@ export default function BoardView() {
                     onDragCancel={() => setActiveId(null)}
                     onDragEnd={handleDragEnd}
                 >
-                    <div className="flex gap-4">
+                    <div className="overflow-x-auto pb-2">
+                    <div className="flex min-w-max gap-4 md:min-w-0">
                         {COLUMNS.map((col) => (
-                            <div key={col.id} className={collapsedCols[col.id] ? "shrink-0" : "flex-1 min-w-0"}>
+                            <div key={col.id} className={collapsedCols[col.id] ? "shrink-0" : "w-[17rem] shrink-0 md:w-auto md:flex-1 md:min-w-0"}>
                                 <DroppableColumn
                                     column={col}
                                     issues={issues.filter((i) => i.status === col.id)}
@@ -421,6 +427,7 @@ export default function BoardView() {
                                 />
                             </div>
                         ))}
+                    </div>
                     </div>
                     <DragOverlay>
                         {activeIssue && (

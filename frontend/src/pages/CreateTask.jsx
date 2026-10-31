@@ -50,7 +50,7 @@ function CreateTask() {
     };
 
     return (
-        <div className="max-w-lg bg-white dark:bg-slate-800 p-6 rounded-xl shadow">
+        <div className="app-surface mx-auto w-full max-w-lg p-4 sm:p-6">
             <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white">Create a New Task</h2>
 
             {projectsError && (

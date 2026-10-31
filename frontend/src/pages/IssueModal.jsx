@@ -104,29 +104,32 @@ export default function IssueModal() {
     return (
         <div
             onClick={close}
-            className="fixed inset-0 bg-slate-900/50 z-50 flex items-start justify-center p-6 overflow-y-auto"
+            className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-900/50 p-0 sm:items-start sm:p-6"
         >
             <div
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-3xl w-full my-8"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Issue details"
+                className="my-0 w-full max-w-3xl rounded-t-2xl bg-white shadow-xl dark:bg-slate-800 sm:my-8 sm:rounded-2xl"
             >
                 {isLoading || !issue ? (
                     <div className="p-8 text-slate-500">Loading…</div>
                 ) : (
                     <>
-                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-5 py-3">
-                            <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700 sm:px-5">
+                            <div className="flex min-w-0 items-center gap-3">
                                 <span className="font-mono text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-700 dark:text-slate-200 rounded">
                                     {issue.issueKey}
                                 </span>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">{issue.issueType}</span>
                             </div>
-                            <button onClick={close} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-2xl leading-none">
+                            <button autoFocus onClick={close} className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg text-2xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200" aria-label="Close issue details">
                                 ×
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-5">
+                        <div className="grid max-h-[calc(100dvh-4rem)] grid-cols-1 gap-5 overflow-y-auto p-4 md:max-h-none md:grid-cols-3 md:gap-6 md:p-5">
                             <div className="md:col-span-2 space-y-4">
                                 <EditableTitle issue={issue} onSave={(v) => updateMut.mutate({ title: v })} />
                                 <EditableDescription issue={issue} onSave={(v) => updateMut.mutate({ description: v })} />

@@ -53,7 +53,7 @@ function EditTask() {
     if (!task) return <p>Task not found</p>;
 
     return (
-        <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-lg shadow">
+        <div className="app-surface mx-auto w-full max-w-lg p-4 sm:p-6">
             <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">Edit Task</h2>
             {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 

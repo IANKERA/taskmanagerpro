@@ -9,7 +9,7 @@ export default function ProfileSettings() {
     const qc = useQueryClient();
 
     return (
-        <div className="max-w-2xl mx-auto p-6 space-y-8">
+        <div className="page-container max-w-2xl space-y-6">
             <h1 className="text-2xl font-bold dark:text-white">Profile Settings</h1>
             <EmailSection user={user} />
             <NotificationPrefsSection />
@@ -30,14 +30,14 @@ function EmailSection({ user }) {
     });
 
     return (
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow p-5 space-y-3">
+        <section className="app-surface space-y-3 p-4 sm:p-5">
             <h2 className="text-lg font-semibold dark:text-white">Email Address</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
                 Used for email notifications. Leave blank to disable email alerts.
             </p>
             <form
                 onSubmit={(e) => { e.preventDefault(); mut.mutate(email); }}
-                className="flex gap-3 items-end"
+                className="flex flex-col gap-3 sm:flex-row sm:items-end"
             >
                 <input
                     type="email"
@@ -48,7 +48,7 @@ function EmailSection({ user }) {
                 />
                 <button
                     disabled={mut.isPending}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+                    className="min-h-11 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                     Save
                 </button>
@@ -88,14 +88,14 @@ function NotificationPrefsSection() {
     ];
 
     return (
-        <section className="bg-white dark:bg-slate-800 rounded-lg shadow p-5 space-y-3">
+        <section className="app-surface space-y-3 p-4 sm:p-5">
             <h2 className="text-lg font-semibold dark:text-white">Email Notifications</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
                 Choose which events trigger email notifications.
             </p>
             <div className="space-y-2">
                 {options.map((o) => (
-                    <label key={o.key} className="flex items-center gap-3 py-1 cursor-pointer">
+                    <label key={o.key} className="flex min-h-11 items-center gap-3 py-1 cursor-pointer">
                         <input
                             type="checkbox"
                             checked={prefs?.[o.key] ?? true}

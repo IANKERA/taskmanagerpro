@@ -31,11 +31,11 @@ export default function MyWork() {
     });
 
     return (
-        <div className="max-w-5xl mx-auto">
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6">My Work</h1>
+        <div className="page-container">
+            <h1 className="mb-5 text-2xl font-semibold text-slate-900 dark:text-white">My Work</h1>
 
             {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+                <div className="mb-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                     <StatCard label="Projects" value={stats.projectCount} />
                     <StatCard label="To Do" value={stats.totalOpen} color="text-slate-700 dark:text-slate-300" />
                     <StatCard label="In Progress" value={stats.totalInProgress} color="text-blue-600 dark:text-blue-400" />
@@ -48,11 +48,11 @@ export default function MyWork() {
                 <div className="lg:col-span-2 space-y-6">
                     {/* My Issues */}
                     <div>
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                                 My Issues ({issues.length})
                             </h2>
-                            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
+                            <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={showClosed}
@@ -69,19 +69,19 @@ export default function MyWork() {
                                 No issues assigned to you.
                             </div>
                         ) : (
-                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg divide-y divide-slate-100 dark:divide-slate-700">
+                            <div className="app-surface divide-y divide-slate-100 overflow-hidden dark:divide-slate-700">
                                 {issues.map((issue) => (
                                     <button
                                         key={issue.id}
                                         onClick={() => navigate(`/projects/${issue.projectKey}/board/${issue.issueKey}`)}
-                                        className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3"
+                                        className="flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 sm:flex-nowrap"
                                     >
                                         <span className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded ${STATUS_BADGE[issue.status] || ""}`}>
                                             {issue.status?.replace("_", " ")}
                                         </span>
-                                        <span className="font-mono text-xs text-slate-500 dark:text-slate-400 shrink-0">{issue.issueKey}</span>
+                                        <span className="shrink-0 font-mono text-xs text-slate-500 dark:text-slate-400">{issue.issueKey}</span>
                                         <span className="text-sm text-slate-900 dark:text-slate-100 truncate flex-1">{issue.title}</span>
-                                        <span className="text-xs text-slate-400 shrink-0">{issue.projectKey}</span>
+                                        <span className="order-last w-full text-xs text-slate-400 sm:order-none sm:w-auto sm:shrink-0">{issue.projectKey}</span>
                                         {issue.priority && (
                                             <span className={`w-2 h-2 rounded-full shrink-0 ${
                                                 issue.priority === "HIGH" ? "bg-red-500" :
@@ -98,19 +98,19 @@ export default function MyWork() {
                     {recentIssues.length > 0 && (
                         <div>
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Recently Viewed</h2>
-                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg divide-y divide-slate-100 dark:divide-slate-700">
+                            <div className="app-surface divide-y divide-slate-100 overflow-hidden dark:divide-slate-700">
                                 {recentIssues.map((ri) => (
                                     <button
                                         key={ri.issueKey}
                                         onClick={() => navigate(`/projects/${ri.projectKey}/board/${ri.issueKey}`)}
-                                        className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3"
+                                        className="flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 sm:flex-nowrap"
                                     >
                                         <span className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded ${STATUS_BADGE[ri.status] || "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"}`}>
                                             {ri.status?.replace("_", " ")}
                                         </span>
                                         <span className="font-mono text-xs text-slate-500 dark:text-slate-400 shrink-0">{ri.issueKey}</span>
                                         <span className="text-sm text-slate-900 dark:text-slate-100 truncate flex-1">{ri.title}</span>
-                                        <span className="text-[10px] font-mono text-slate-400 shrink-0">{ri.projectKey}</span>
+                                        <span className="order-last w-full text-[10px] font-mono text-slate-400 sm:order-none sm:w-auto sm:shrink-0">{ri.projectKey}</span>
                                     </button>
                                 ))}
                             </div>
@@ -173,7 +173,7 @@ function renderActivity(a) {
 
 function StatCard({ label, value, color = "text-slate-900 dark:text-white" }) {
     return (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 text-center">
+        <div className="app-surface p-4 text-center">
             <div className={`text-2xl font-bold ${color}`}>{value}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{label}</div>
         </div>

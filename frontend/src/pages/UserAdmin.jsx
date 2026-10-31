@@ -54,7 +54,7 @@ export default function UserAdmin() {
             ) : users.length === 0 ? (
                 <div className="text-slate-500">No users found.</div>
             ) : (
-                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <div className="app-surface overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">

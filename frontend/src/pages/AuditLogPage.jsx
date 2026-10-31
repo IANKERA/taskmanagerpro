@@ -63,7 +63,7 @@ export default function AuditLogPage() {
                 <span className="text-xs text-slate-400 self-center ml-auto">{filtered.length} entries</span>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className="app-surface overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-700/50 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         <tr>

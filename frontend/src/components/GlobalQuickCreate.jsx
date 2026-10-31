@@ -65,14 +65,17 @@ function QuickCreateModal({ onClose, navigate }) {
     });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/40" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-start sm:pt-[12vh]" onClick={onClose}>
             <div
-                className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-[480px] p-5"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="quick-create-title"
+                className="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl dark:bg-slate-800 sm:p-5"
                 onClick={(e) => e.stopPropagation()}
             >
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Quick Create Issue</h3>
+                <h3 id="quick-create-title" className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Quick Create Issue</h3>
                 <form onSubmit={(e) => { e.preventDefault(); if (form.title && form.projectKey) mut.mutate(); }} className="space-y-3">
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                         <select
                             value={form.projectKey}
                             onChange={(e) => setForm({ ...form, projectKey: e.target.value, assigneeUsername: "" })}
@@ -110,9 +113,9 @@ function QuickCreateModal({ onClose, navigate }) {
                         value={form.assigneeUsername}
                         onChange={(assigneeUsername) => setForm({ ...form, assigneeUsername })}
                     />
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-400 dark:text-slate-500">Ctrl+N to open · Esc to close</span>
-                        <div className="flex gap-2">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="hidden text-xs text-slate-400 sm:block dark:text-slate-500">Ctrl+N to open · Esc to close</span>
+                        <div className="grid grid-cols-2 gap-2 sm:flex">
                             <button
                                 type="button"
                                 onClick={onClose}

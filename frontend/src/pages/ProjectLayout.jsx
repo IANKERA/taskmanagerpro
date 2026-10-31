@@ -23,28 +23,30 @@ export default function ProjectLayout() {
             : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300");
 
     return (
-        <div className="max-w-7xl mx-auto">
-            <div className="mb-4">
-                <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-xs px-2 py-0.5 bg-slate-100 rounded">{project.key}</span>
-                    <h1 className="text-xl font-semibold text-slate-900">{project.name}</h1>
+        <div className="page-container">
+            <div className="mb-4 min-w-0">
+                <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 rounded bg-slate-100 px-2 py-0.5 font-mono text-xs dark:bg-slate-800">{project.key}</span>
+                    <h1 className="truncate text-xl font-semibold text-slate-900 dark:text-white">{project.name}</h1>
                 </div>
                 {project.description && (
                     <p className="text-sm text-slate-500 mt-1">{project.description}</p>
                 )}
             </div>
 
-            <nav className="border-b border-slate-200 mb-6 flex gap-1">
-                <NavLink to={`/projects/${projectKey}/board`} className={tab}>Board</NavLink>
-                <NavLink to={`/projects/${projectKey}/backlog`} className={tab}>Backlog</NavLink>
-                <NavLink to={`/projects/${projectKey}/sprints`} className={tab}>Sprints</NavLink>
-                <NavLink to={`/projects/${projectKey}/calendar`} className={tab}>Calendar</NavLink>
-                <NavLink to={`/projects/${projectKey}/analytics`} className={tab}>Analytics</NavLink>
-                <NavLink to={`/projects/${projectKey}/time-report`} className={tab}>Time</NavLink>
-                <NavLink to={`/projects/${projectKey}/timeline`} className={tab}>Timeline</NavLink>
-                <NavLink to={`/projects/${projectKey}/activity`} className={tab}>Activity</NavLink>
-                <NavLink to={`/projects/${projectKey}/settings`} className={tab}>Settings</NavLink>
-            </nav>
+            <div className="-mx-4 mb-6 overflow-x-auto border-b border-slate-200 px-4 sm:mx-0 sm:px-0 dark:border-slate-700">
+                <nav aria-label="Project sections" className="flex min-w-max gap-1">
+                    <NavLink to={`/projects/${projectKey}/board`} className={tab}>Board</NavLink>
+                    <NavLink to={`/projects/${projectKey}/backlog`} className={tab}>Backlog</NavLink>
+                    <NavLink to={`/projects/${projectKey}/sprints`} className={tab}>Sprints</NavLink>
+                    <NavLink to={`/projects/${projectKey}/calendar`} className={tab}>Calendar</NavLink>
+                    <NavLink to={`/projects/${projectKey}/analytics`} className={tab}>Analytics</NavLink>
+                    <NavLink to={`/projects/${projectKey}/time-report`} className={tab}>Time</NavLink>
+                    <NavLink to={`/projects/${projectKey}/timeline`} className={tab}>Timeline</NavLink>
+                    <NavLink to={`/projects/${projectKey}/activity`} className={tab}>Activity</NavLink>
+                    <NavLink to={`/projects/${projectKey}/settings`} className={tab}>Settings</NavLink>
+                </nav>
+            </div>
 
             <Outlet context={{ project }} />
         </div>

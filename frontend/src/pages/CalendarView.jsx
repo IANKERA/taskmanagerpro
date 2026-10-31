@@ -68,27 +68,29 @@ export default function CalendarView() {
     return (
         <div>
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                    <button onClick={prev} className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-300">←</button>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white min-w-[180px] text-center">{title}</h2>
-                    <button onClick={next} className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-300">→</button>
-                    <button onClick={today} className="px-2 py-1 text-xs border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 ml-1">Today</button>
+                    <button onClick={prev} className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-300 text-sm hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700" aria-label="Previous month">←</button>
+                    <h2 className="min-w-0 flex-1 text-center text-base font-semibold text-slate-900 dark:text-white sm:min-w-[180px] sm:text-lg">{title}</h2>
+                    <button onClick={next} className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-slate-300 text-sm hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700" aria-label="Next month">→</button>
+                    <button onClick={today} className="min-h-11 rounded-lg border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700">Today</button>
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">
                     {issues.filter((i) => i.dueDate).length} issues with due dates
                 </div>
             </div>
 
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="min-w-[42rem]">
             {/* Day headers */}
-            <div className="grid grid-cols-7 mb-1">
+            <div className="mb-1 grid grid-cols-7">
                 {DAYS.map((d) => (
-                    <div key={d} className="text-center text-xs font-semibold text-slate-500 dark:text-slate-400 py-1">{d}</div>
+                    <div key={d} className="py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">{d}</div>
                 ))}
             </div>
 
             {/* Calendar grid */}
-            <div className="grid grid-cols-7 border-t border-l border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-7 border-l border-t border-slate-200 dark:border-slate-700">
                 {cells.map((cell, i) => {
                     if (!cell) {
                         return <div key={`blank-${i}`} className="border-b border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 min-h-[100px]" />;
@@ -126,6 +128,8 @@ export default function CalendarView() {
                         </div>
                     );
                 })}
+            </div>
+            </div>
             </div>
         </div>
     );

@@ -115,12 +115,12 @@ export default function Projects() {
     );
 
     return (
-        <div className="max-w-5xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
+        <div className="page-container">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Projects</h1>
                 <button
                     onClick={() => setShowForm((v) => !v)}
-                    className="px-4 py-2 bg-slate-900 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-slate-800 dark:hover:bg-blue-700"
+                    className="min-h-11 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
                     {showForm ? "Cancel" : "+ New project"}
                 </button>
@@ -189,7 +189,7 @@ export default function Projects() {
             )}
             {confirmDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-96 shadow-xl">
+                    <div className="mx-4 w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-slate-800 sm:p-6">
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Delete project?</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                             This will permanently delete <strong>{confirmDelete}</strong> and all its issues, comments, and data. This cannot be undone.
@@ -230,7 +230,7 @@ function CreateProjectForm({ onCreated }) {
                 e.preventDefault();
                 mut.mutate(form);
             }}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-6 space-y-3"
+            className="app-surface mb-6 space-y-3 p-4"
         >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input

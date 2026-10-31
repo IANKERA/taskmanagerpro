@@ -9,6 +9,9 @@ import lombok.Data;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,7 +38,8 @@ public class WorkflowRuleController {
     }
 
     @PostMapping
-    public ResponseEntity<RuleDTO> create(@PathVariable String projectKey, @RequestBody CreateRuleRequest req) {
+    public ResponseEntity<RuleDTO> create(@PathVariable String projectKey,
+                                          @Valid @RequestBody CreateRuleRequest req) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
 
@@ -101,11 +105,22 @@ public class WorkflowRuleController {
 
     @Data
     public static class CreateRuleRequest {
+        @NotBlank
+        @Size(max = 128)
         private String name;
+        @NotBlank
+        @Size(max = 64)
         private String triggerField;
+        @NotBlank
+        @Size(max = 128)
         private String triggerValue;
+        @NotBlank
+        @Size(max = 64)
         private String actionType;
+        @Size(max = 64)
         private String actionField;
+        @NotBlank
+        @Size(max = 256)
         private String actionValue;
     }
 }

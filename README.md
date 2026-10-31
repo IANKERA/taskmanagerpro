@@ -1,347 +1,161 @@
-# taskmanagerpro
-TaskManagerPro – Spring Boot backend with Hibernate &amp; PostgreSQL, ready for full-stack integration with React and Docker.
+# TaskManagerPro
 
-## Backend tests
+A full-stack project management application built to demonstrate Java backend engineering with a practical React client. It provides a JWT-secured REST API, PostgreSQL persistence, versioned Flyway migrations, and a Docker-based local stack.
 
-Run the backend test suite from the repository root with:
+## Project status
 
-```shell
-cd backend
-mvn test
+- **Deployment:** Not deployed to Render. Staging service URLs, environment settings, database, and persistent attachment storage have not been configured or verified.
+- **CI:** A GitHub Actions workflow is present in this working tree for pushes and pull requests targeting `main`. It has not been pushed or run on GitHub.
+- **Latest local verification (29 Oct 2026):** The backend non-Docker Maven package command passed with 99 tests and `BUILD SUCCESS`. Frontend tests and build are not verified: local dependency installation failed with Windows `EPERM`, and a safe isolated retry did not complete.
+- **Docker integration tests:** Excluded from CI. The application-context integration test uses Testcontainers and requires Docker.
+
+## What it does
+
+- Organizes work into projects with project memberships and role-based permissions.
+- Manages issues and tasks with subtasks, assignees, sprints, labels, watchers, and issue links.
+- Supports comments, activity history, dashboards, search, time tracking, and CSV exports.
+- Provides project custom fields, issue templates, recurring rules, and workflow automations.
+- Handles attachment upload and download, with a database-backed cleanup outbox for reliable file deletion.
+- Includes account registration, login, user preferences, notifications, and optional email delivery.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Browser[React and Vite client] -->|JSON API, Bearer JWT| API[Spring Boot REST API]
+    API --> Security[Spring Security and JWT filter]
+    API --> Controllers[Controllers and Bean Validation]
+    Controllers --> Services[Application services]
+    Services --> Repositories[Spring Data JPA repositories]
+    Repositories --> PostgreSQL[(PostgreSQL)]
+    Flyway[Flyway migrations] --> PostgreSQL
+    Services --> Files[Attachment storage and cleanup outbox]
 ```
 
-Docker must be running. The Spring application-context test uses Testcontainers to
-start a temporary PostgreSQL 16 database, applies all Flyway migrations, and
-validates the Hibernate mappings. It does not connect to the database configured
-for the application or reuse a persistent database volume.
+The backend separates HTTP controllers, DTOs, application services, repositories, security, and persistence models. The frontend groups API clients, shared state, reusable components, and pages. Docker Compose supports local development; the frontend image uses Nginx.
 
-## Render production configuration
+## Technology
 
-The application does not read Render settings automatically. Configure the
-variables below in the backend service's private Render environment settings;
-do not commit real credentials or secret values.
+| Area | Technologies |
+| --- | --- |
+| Backend | Java 21, Spring Boot, Spring MVC, Spring Security, JWT, Bean Validation |
+| Persistence | Spring Data JPA, Hibernate, PostgreSQL, Flyway |
+| Frontend | React, Vite, Tailwind CSS, Axios, TanStack Query |
+| Testing | JUnit 5, Spring test support, Mockito, Testcontainers, Vitest, Testing Library |
+| Packaging | Maven Wrapper, npm, Docker, Docker Compose, Nginx |
 
-### Required backend settings
+## Engineering highlights
+
+- Stateless bearer-token authentication. Authorization is enforced in backend services and project-scoped operations; user identity comes from the authenticated security context.
+- Request DTO validation and consistent API error responses.
+- Versioned SQL migrations. Production startup runs Flyway and Hibernate schema validation; Hibernate is not configured to update the production schema.
+- PostgreSQL integration coverage using a disposable Testcontainers database. Migration and attachment cleanup behavior are exercised without relying on a developer database.
+- Attachment deletion is queued transactionally and retried by a cleanup worker, keeping database changes coordinated with filesystem cleanup.
+- CI runs non-Docker backend tests and packaging alongside frontend tests and a production frontend build.
+
+## Run locally
+
+### Requirements
+
+- JDK 21
+- Node.js 22 and npm
+- Docker with Docker Compose, for the local PostgreSQL service and integration tests
+
+### Start the database and application
+
+Start the local PostgreSQL container from the repository root:
+
+```shell
+docker compose -f docker-compose.db.yml up -d
+```
+
+Set private local values in the terminal that will run Docker Compose and the backend. The `dev` profile provides non-sensitive host, port, and database-name defaults only; it requires database credentials and a JWT signing key. Do not add these values to tracked files.
+
+PowerShell:
+
+```powershell
+$env:DB_USER = 'local_database_user'
+$env:DB_PASS = '<choose-a-private-local-password>'
+$env:JWT_SECRET = '<generate-a-private-random-secret-of-at-least-32-bytes>'
+$env:SPRING_PROFILES_ACTIVE = 'dev'
+.\mvnw.cmd -f backend/pom.xml spring-boot:run
+```
+
+macOS/Linux:
+
+```shell
+export DB_USER=local_database_user
+export DB_PASS='<choose-a-private-local-password>'
+export JWT_SECRET='<generate-a-private-random-secret-of-at-least-32-bytes>'
+SPRING_PROFILES_ACTIVE=dev bash ./mvnw -f backend/pom.xml spring-boot:run
+```
+
+Start the frontend in another terminal:
+
+```shell
+cd frontend
+npm ci
+npm run dev
+```
+
+The Vite development server is available at `http://localhost:5173` and proxies `/api` requests to the backend at `http://localhost:8080`.
+
+Alternatively, on Docker Desktop, start the application images after starting PostgreSQL:
+
+```shell
+docker compose up --build
+```
+
+The Compose frontend is published on port 80 and the backend on port 8080. Run both Compose commands from the same shell where `DB_USER`, `DB_PASS`, and `JWT_SECRET` are set; `DB_NAME` is optional and defaults to `taskdb`. Compose configuration is for local development only; do not reuse its credentials or profile settings in a hosted environment. Stop the database with `docker compose -f docker-compose.db.yml down`; this keeps its named data volume.
+
+### Configuration
+
+The `dev` profile is for local use. It provides non-sensitive local defaults and requires private credentials/signing material:
 
 | Variable | Purpose |
 | --- | --- |
-| `SPRING_PROFILES_ACTIVE=prod` | Activates the tracked `application-prod.properties`. Use Spring Boot's standard profile variable and verify the active profile in startup logs. |
-| `JWT_SECRET` | Required by the `prod` profile. Supply a private, stable, randomly generated secret with at least 32 bytes for HS256. Do not use the development fallback or rotate it casually: changing it invalidates issued tokens. |
-| `DB_HOST` | Hostname of the intended PostgreSQL service; use the private/internal address when the services support it. |
-| `DB_PORT` | PostgreSQL port. |
-| `DB_NAME` | PostgreSQL database name. |
-| `DB_USER` | PostgreSQL username. |
-| `DB_PASS` | PostgreSQL password. |
-| `APP_CORS_ALLOWED_ORIGINS` | Optional comma-separated list of exact HTTP(S) frontend origins. Set the staging frontend origin here when it differs from the built-in origin. Wildcards and paths are rejected. |
+| `SPRING_PROFILES_ACTIVE` | Select `dev` locally; select `prod` explicitly for a production-style deployment. |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | PostgreSQL host, port, and database used by the profile. |
+| `DB_USER`, `DB_PASS` | Required PostgreSQL credentials for local development and Compose. |
+| `JWT_SECRET` | Required JWT signing key. Keep real keys in private environment settings; never commit them. |
+| `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Standard Spring overrides for the JDBC target and credentials. |
+| `APP_CORS_ALLOWED_ORIGINS` | Comma-separated exact browser origins; do not use a wildcard. |
+| `VITE_API_URL` | Optional frontend build-time backend base URL, without an `/api` suffix. Leave unset for same-origin/proxy setups. |
+| `APP_UPLOAD_DIR` | Attachment storage directory. Use persistent storage for hosted deployments. |
+| `PORT` | HTTP port; the app uses the platform-assigned value, with a local default of 8080. |
+| `MAIL_ENABLED`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | Optional SMTP delivery. Email is disabled by default; keep credentials private. |
 
-The application assembles its JDBC URL from `DB_HOST`, `DB_PORT`, and
-`DB_NAME`, and uses `DB_USER` and `DB_PASS` for credentials. Alternatively,
-standard Spring variables `SPRING_DATASOURCE_URL`,
-`SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` can override
-those settings. `DATABASE_URL` by itself is not consumed by this application;
-configure the JDBC URL or the five `DB_*` values explicitly.
+Outside `dev` and `test`, configure a strong unique JWT key and an explicit non-local datasource. For Render, activate `SPRING_PROFILES_ACTIVE=prod`; configure the exact frontend origin in `APP_CORS_ALLOWED_ORIGINS`, the staging API base in `VITE_API_URL`, and `APP_UPLOAD_DIR` on a persistent disk. Render URLs and service settings are operator-provided and have not been established here. Never put secret values in the README or source control.
 
-Do not omit database settings in Render: local defaults exist only in the
-explicit `dev` profile. Production and any unknown profile require explicit
-datasource settings and reject a local/loopback JDBC host. Before deployment,
-an operator should privately compare the effective JDBC host, database name,
-and username with the intended Render PostgreSQL service. Compare the backend
-service's private environment settings with the PostgreSQL service's internal
-connection details in Render. Do not print a full JDBC URL if it contains
-credentials.
+## Tests and builds
 
-For clarity, the effective Hibernate setting is:
+Run the complete backend test suite from the repository root. The application-context/Testcontainers test requires Docker and starts an isolated PostgreSQL 16 container.
 
-| Profile | Hibernate schema behavior |
-| --- | --- |
-| `dev` (must be selected explicitly) | `update` |
-| `prod` | `validate`; startup rejects an `update` override |
-| `test` | `validate`; tests use an isolated Testcontainers PostgreSQL database |
-| No profile or unknown profile | `validate`; startup requires explicit non-local datasource and a strong non-development JWT secret |
+```shell
+bash ./mvnw -B -ntp -f backend/pom.xml test
+```
 
-### Production behavior and startup safety
+Run the backend CI subset and package build (excludes only the Docker-backed application-context test):
 
-Set `SPRING_PROFILES_ACTIVE=prod` explicitly in Render. This standard Spring
-Boot variable activates the tracked `application-prod.properties`; the
-application does not select `dev` implicitly. With no profile, or with an
-unknown profile, startup validation requires explicit settings, Hibernate
-`validate`, enabled Flyway, and rejects loopback databases and known
-development/test JWT secrets. Combining `prod` with `dev` or `test` also fails
-startup.
+```shell
+bash ./mvnw -B -ntp -f backend/pom.xml '-Dtest=!TaskManagerProApplicationTests' package
+```
 
-The JWT secret is mandatory outside `dev` and `test`, must contain at least 32
-UTF-8 bytes for HS256, and production/unknown-profile validation rejects the
-known development and test keys. No secret value is logged in validation
-errors. The production guard checks effective properties, including
-environment overrides, and refuses Hibernate `update` or disabled Flyway.
+On Windows PowerShell, use `mvnw.cmd` in place of `bash ./mvnw`.
 
-The tracked `application-prod.properties` contains the Render datasource,
-Flyway, JPA, server-port, multipart, mail, and upload defaults. Flyway uses
-`classpath:db/migration` and baselines a pre-existing schema at version `0`;
-Hibernate validates after migrations. Secrets remain environment-only. The
-ignored local `application.properties` and `application.yml` files are not
-needed by Git-based builds. Docker Compose selects the `dev` profile and is for
-local development; its datasource credentials and Hibernate `update` setting
-must not be copied into production configuration.
+Run frontend checks from `frontend/`:
 
-For local development, explicitly select `dev` before launching the backend.
-In PowerShell, run `$env:SPRING_PROFILES_ACTIVE='dev'` and then
-`mvn spring-boot:run` from `backend`. Docker Compose uses the same standard
-profile variable. Without an explicit profile, startup fails closed rather
-than using development database, JWT, or Hibernate settings.
+```shell
+npm ci
+npm run test:run
+npm run build
+```
 
-`PORT` is read by the application and should be left to Render to assign. Do
-not hardcode a Render service port.
+## CI and deployment state
 
-### Attachment storage
+The workflow at `.github/workflows/ci.yml` has two jobs:
 
-The upload property is `app.upload.dir` (environment variable
-`APP_UPLOAD_DIR`). Its application default is `./attachments`; in the backend
-Docker image that resolves under the image work directory (`/app/attachments`).
-The image directory alone is ephemeral. Configure a Render persistent disk,
-for example mount it at `/var/data` and set
-`APP_UPLOAD_DIR=/var/data/taskmanagerpro/attachments`. The configured upload
-directory must be on that mounted disk and writable by the application user.
-The repository does not establish whether a Render disk is currently attached.
+1. Backend: Java 21, all non-Docker tests, and Maven `package`.
+2. Frontend: Node 22, lockfile-based `npm ci`, Vitest, and the Vite production build.
 
-Attachment database rows store absolute filesystem paths. Keep the configured
-path stable across restarts/redeploys. If moving the directory, first back up
-the database and all attachment bytes; copy each file while preserving a
-verified mapping from its existing `storage_path`, validate file counts and
-checksums, and update the database paths in a coordinated migration before
-switching the application setting. Do not simply change `APP_UPLOAD_DIR`:
-existing database paths would no longer resolve beneath the configured root.
-Do not delete the old files until the new deployment and downloads have been
-verified and backups are retained.
-
-Issue/project deletion and individual attachment deletion queue attachment
-paths in the same database transaction as the row deletion. The scheduled
-cleanup worker removes files only after the delete transaction commits; failed
-or unavailable-file cleanup remains in
-`attachment_cleanup_outbox` and is retried. The worker validates that each
-stored path remains under `app.upload.dir`. Parent issue deletion detaches its
-children rather than deleting them. Direct issue/task deletion and bulk issue
-deletion require project ADMIN. Deleting a user sets issue assignees to NULL,
-while required reporter attribution restricts deletion. Other user relationships
-retain their individually defined foreign-key behavior.
-
-### Optional email settings
-
-Email is disabled by default (`MAIL_ENABLED=false`). Only enable it when SMTP
-credentials and a sender address are configured. The optional variables are
-`MAIL_ENABLED`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`,
-and `MAIL_FROM`. Store SMTP credentials in Render's private settings.
-
-### Safe deployment and smoke checks
-
-1. Use a staging service and database clone first. Configure the required
-   variables and persistent disk there.
-2. Verify the startup logs identify the `prod` profile, successful Flyway
-   migration, and Hibernate schema validation. Verify the intended database
-   target privately without logging secrets.
-3. Back up the production database and attachment storage before an approved
-   release. Compare the production Flyway history/schema with the release;
-   never use Hibernate `update` to repair a production schema.
-4. After an approved deployment, test `POST /api/auth/register` and
-   `POST /api/auth/login` with a disposable account. Keep returned tokens
-   private.
-5. Test `GET /api/projects` with a valid token, then create/read/update a
-   staging project and issue. Confirm unauthorized cross-project requests are
-   denied.
-6. Test issue and time-report CSV exports at
-   `GET /api/projects/{projectKey}/issues/export` and
-   `GET /api/projects/{projectKey}/time-report/export`.
-7. Test attachment upload/list/download/delete, then verify the uploaded bytes
-   survive a staging restart/redeploy. Confirm an unauthorized or former
-   project member cannot delete the attachment.
-
-No Render environment values, production database target, or Render disk
-configuration have been verified by this repository documentation.
-
-## Operator-run Render staging preparation
-
-This section is a checklist for an authorized operator. It does not mean that
-a Render service, staging database, frontend origin, or persistent disk has
-been configured or verified. Use an isolated staging environment and synthetic
-test data. Do not point staging at production services or production storage.
-
-### Staging configuration
-
-Set the following privately in the staging service; never put credential
-values in source control, build arguments, screenshots, or logs.
-
-| Setting | Requirement |
-| --- | --- |
-| `SPRING_PROFILES_ACTIVE=prod` | Required. Use the exact `prod` profile and verify the effective active profile in startup logs. |
-| `JWT_SECRET` | Required. Use a unique, randomly generated staging secret of at least 32 UTF-8 bytes. Do not reuse a development or production secret. |
-| PostgreSQL settings | Required. Set all five `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASS` values, or set all three `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` overrides. Use only the isolated staging database's private connection details. `DATABASE_URL` alone is not read. |
-| `SPRING_FLYWAY_ENABLED=true` | Required. Flyway is enabled by default, but explicitly verify this effective value. |
-| `SPRING_JPA_HIBERNATE_DDL_AUTO=validate` | Required. This is the safe schema behavior; do not use `update` to repair a failed staging migration. |
-| `PORT` | Let the platform assign this value. Do not hardcode a port. |
-| Persistent disk and `APP_UPLOAD_DIR` | Required for attachment persistence tests. Mount a staging-only disk and set `APP_UPLOAD_DIR` to a directory on that mount, for example `/var/data/taskmanagerpro/attachments` when the mount is `/var/data`. The example is not a claim that such a disk exists. |
-| `MAIL_ENABLED=false` | Optional email is disabled by default; keep it disabled unless the staging test specifically needs email. If enabled, configure private `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `MAIL_FROM` values. |
-| `APP_CORS_ALLOWED_ORIGINS` | For a separate staging frontend, set its exact origin (scheme and host, no path). Multiple exact origins may be comma-separated. Do not use `*`. |
-
-The backend Docker image runs as the non-root `app` user. Verify that the
-mounted directory exists and that this runtime user can create, read, and
-delete a synthetic test file there; a mount can hide the image's pre-created
-directory and its permissions. Do not assume the image filesystem persists.
-
-The checked-in backend Dockerfile builds the Spring Boot JAR and starts it
-with `java -jar app.jar`; the frontend Dockerfile builds the Vite bundle and
-serves it with Nginx on port 80. Configure each hosted service to use its
-corresponding Dockerfile and build context. The repository does not establish
-Render's service root directories, Docker contexts, or start settings.
-`docker-compose.yml` is for local development and its local database,
-development profile, and named volume are not staging settings.
-
-For a separately hosted frontend, explicitly build it with
-`VITE_API_URL` set to the staging backend's base origin (scheme and host, no
-trailing slash and no `/api` suffix). `VITE_API_URL` is embedded into the
-browser bundle at build time and must contain no secret. If omitted, API calls
-use same-origin `/api` paths; they no longer fall back to the existing hosted
-backend. Confirm the selected proxy/topology routes those paths to staging.
-
-`SecurityConfig` accepts an exact-origin allowlist through
-`APP_CORS_ALLOWED_ORIGINS`; the existing frontend origin and local development
-origin remain defaults. No staging frontend or backend URL is established by
-the repository. Before building/deploying, the operator must supply the exact
-staging backend base origin for `VITE_API_URL` and the exact frontend origin
-for `APP_CORS_ALLOWED_ORIGINS`. Do not use wildcards. A same-origin reverse
-proxy is also possible, but verify that its API proxy points to staging: the
-checked-in Nginx config uses the Docker Compose hostname `backend:8080` and
-does not work unchanged between independently hosted services.
-
-The current backend does not expose a dedicated health/readiness endpoint
-(Actuator is not configured). Do not configure a platform health-check path
-based on assumption; validate the chosen path and startup behavior separately.
-
-### Migration preflight
-
-Do not run this preflight against production. The existing automated
-Testcontainers test applies the migration chain, including V19 and V20, to a
-fresh disposable PostgreSQL database. It does not establish compatibility
-with a representative populated schema or existing attachment storage.
-
-1. Have an authorized operator create a new, isolated staging PostgreSQL
-   database. Confirm privately that the backend's effective JDBC target is
-   that database before starting the application.
-2. Prepare a representative staging schema and synthetic or appropriately
-   sanitized test rows using an authorized process. Do not copy production
-   data or attachments as part of this procedure. Ensure any attachment
-   metadata and outbox paths refer only to staging test files; the cleanup
-   worker must never be able to target production files.
-3. Before migration, record the staging database's current schema and
-   successful `flyway_schema_history` versions/checksums. Compare them with
-   the expected release history. Investigate unknown versions, failed
-   migrations, checksum mismatches, or an unexpected baseline; do not
-   manually edit Flyway history to bypass a problem.
-4. Run the exact candidate release against the staging database with the
-   `prod` profile, Flyway enabled, and Hibernate `validate`. Review startup
-   logs for Flyway completion and schema validation without logging
-   credentials or a credential-bearing JDBC URL.
-5. Verify the resulting migration history includes V19 and V20 and inspect
-   the task foreign-key behavior: deleting a parent detaches its direct
-   children, deleting an assignee preserves the task with a null assignee,
-   and reporter attribution remains restricted. Check that existing reporter
-   references and constraints are compatible before migration.
-6. Confirm every staged attachment `storage_path` is compatible with the
-   configured `APP_UPLOAD_DIR`, and that any included synthetic attachment
-   bytes resolve at the expected paths. If paths must change, stop and plan a
-   coordinated database-and-file mapping; changing the directory alone will
-   orphan existing references.
-
-**Block the rollout** on unexpected migration history/checksums, failed
-migrations, incompatible constraints, unresolved reporter references,
-Hibernate validation errors, attachment paths that do not resolve within the
-staging upload root, or an unwritable/unpersistent disk. Do not alter V19/V20
-to get past a staging failure; investigate and prepare a reviewed forward
-fix.
-
-### Staging smoke tests
-
-Use synthetic accounts, projects, tasks, and files only. Record results and
-avoid recording tokens or passwords.
-
-1. Start the candidate backend with the intended production-style profile.
-   Confirm startup completes, the effective profile is `prod`, the staging
-   database is reachable, Flyway succeeds, and Hibernate validates the schema.
-2. Register and log in with disposable users. Verify logout clears the
-   browser session, and expired, malformed, or tampered tokens are rejected.
-   Confirm a forbidden request returns 403 without treating it as an expired
-   session.
-3. Create two isolated projects with an ADMIN, a MEMBER, and a user who is not
-   a member. Verify project membership scoping and cross-project reads/writes
-   are denied. Verify MEMBER operations remain available while ADMIN-only
-   settings and destructive operations are denied.
-4. As project ADMIN, delete a synthetic parent task and verify its direct
-   subtasks remain and are detached; verify deeper descendants remain linked
-   to their surviving parent.
-5. Upload, list, download, and delete a small synthetic attachment. Verify
-   the downloaded bytes match and the corresponding cleanup work eventually
-   leaves the outbox. Test the configured upload-size limit without sending
-   oversized real data.
-6. For retry behavior, use only a synthetic attachment on the isolated
-   staging disk. In a controlled test, temporarily make that test file
-   unavailable for deletion, verify its outbox attempt is retained and
-   rescheduled, restore access, and verify a later retry removes the file and
-   queue row. Never simulate this against shared or production storage.
-7. Restart and redeploy the staging service. Verify the same synthetic
-   attachment remains downloadable and the database/outbox state remains
-   intact.
-8. If using the browser UI, verify the built frontend targets the staging API,
-   the selected CORS/topology setup works, and no request is sent to the
-   fallback backend origin.
-
-### Monitoring, backup, and recovery
-
-- Watch application startup logs for database connection, Flyway, and
-  Hibernate validation failures. The repository has no dedicated backend
-  health/readiness endpoint, and the cleanup worker has no built-in metrics,
-  alert integration, or dead-letter state.
-- The cleanup worker runs every 60 seconds by default, handles at most 100
-  due entries per pass, and retries filesystem errors after one minute.
-  Monitor application warnings and the staging `attachment_cleanup_outbox`
-  for accumulating due rows or increasing attempts. For example, an
-  authorized operator can inspect staging with:
-
-  ```sql
-  SELECT COUNT(*) AS due_rows,
-         MAX(attempts) AS highest_attempts,
-         MIN(next_attempt_at) AS oldest_next_attempt
-  FROM attachment_cleanup_outbox
-  WHERE next_attempt_at <= CURRENT_TIMESTAMP;
-  ```
-
-  `last_error` stores an exception class, not a full diagnostic or alert.
-  Establish an operator-owned threshold and escalation process before relying
-  on this queue.
-- Before a staging rollout or recovery test, define a maintenance window,
-  stop writes, allow in-flight transactions and cleanup work to settle, and
-  back up both the staging database and the matching persistent attachment
-  directory. Test restoring the pair together; the database contains absolute
-  file paths and queued cleanup work.
-- If startup, authorization, migration, or persistence checks fail, stop
-  further rollout and traffic to the candidate, preserve the database and
-  disk for diagnosis, and notify the release owner. Do not delete the staging
-  database, disk, or files to make the rollout appear successful.
-- No V19/V20 down-migration or tested rollback procedure is established here.
-  Reverting application code alone may leave a schema the old version cannot
-  use. Prefer a reviewed forward fix; restore a matching database-and-file
-  backup only under an approved recovery plan that accounts for changes since
-  that backup.
-
-### Operator confirmation still required
-
-- [ ] Confirm the effective staging profile, PostgreSQL target and private
-      credentials, unique JWT secret, Flyway setting, and Hibernate validation.
-- [ ] Confirm the candidate migration history and compatibility on the
-      representative isolated staging schema.
-- [ ] Confirm the frontend/backend topology, staging frontend origin/CORS
-      behavior, and build-time `VITE_API_URL`.
-- [ ] Confirm the persistent disk is mounted, writable by the runtime user,
-      stable across restart/redeploy, and contains only staging files.
-- [ ] Confirm backup/restore, cleanup-failure monitoring, and recovery owners.
-
-No staging service, environment value, database, disk, or migration against a
-populated clone has been verified by this repository change.
+It uses no production secrets and does not connect to an application database. Because the workflow is currently only in this working tree, GitHub has not run it. Render staging is also not configured or verified; the exact staging frontend/backend origins, database target, and persistent disk remain operator decisions. No deployment is claimed.

@@ -59,6 +59,9 @@ export function formatApiError(error, fallback = "Request failed. Please try aga
     const response = error?.response;
     const data = response?.data ?? error?.data;
     const status = response?.status ?? error?.status;
+    if (typeof status === "number" && status >= 500) {
+        return "The server could not complete the request. Please try again later.";
+    }
     const messages = uniqueMessages(collectMessages(data));
     const responseMessage = messages.join("; ");
     const rawErrorMessage = typeof error === "string"

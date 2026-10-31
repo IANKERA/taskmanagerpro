@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 
@@ -20,8 +22,10 @@ public class TaskDTO {
     /** New in M2 — read-only on responses, ignored on create. */
     private String issueKey;
 
+    @NotBlank
     private String title;
     private String description;
+    @NotNull
     private TaskStatus status;
     private TaskPriority priority;
 

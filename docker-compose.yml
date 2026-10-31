@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/taskdb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/${DB_NAME:-taskdb}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:?Set DB_USER before starting Docker Compose}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASS:?Set DB_PASS before starting Docker Compose}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET before starting Docker Compose}

@@ -13,6 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,7 +43,8 @@ public class RecurringRuleController {
     }
 
     @PostMapping
-    public ResponseEntity<RuleDTO> create(@PathVariable String projectKey, @RequestBody CreateRuleRequest req) {
+    public ResponseEntity<RuleDTO> create(@PathVariable String projectKey,
+                                          @Valid @RequestBody CreateRuleRequest req) {
         Project p = projectService.getByKey(projectKey);
         projectService.requireProjectRole(p.getId(), ProjectRole.ADMIN);
 
@@ -128,12 +132,19 @@ public class RecurringRuleController {
 
     @Data
     public static class CreateRuleRequest {
+        @NotBlank
+        @Size(max = 128)
         private String name;
+        @NotBlank
+        @Size(max = 256)
         private String titleTemplate;
         private String description;
         private IssueType issueType;
         private TaskPriority priority;
+        @Size(max = 64)
         private String assigneeUsername;
+        @NotBlank
+        @Size(max = 64)
         private String cronExpression;
     }
 }

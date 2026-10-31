@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -36,7 +37,7 @@ public class TaskController {
 
     // Create new task
     @PostMapping
-    public TaskDTO createTask(@RequestBody TaskDTO taskDTO) {
+    public TaskDTO createTask(@Valid @RequestBody TaskDTO taskDTO) {
         if (taskDTO.getId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Task id is assigned by the server");
         }

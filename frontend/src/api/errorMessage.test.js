@@ -45,4 +45,11 @@ describe("formatApiError", () => {
             .toBe("Could not add member");
         expect(formatApiError({}, "Could not add member")).toBe("Could not add member");
     });
+
+    it("does not expose response details for server errors", () => {
+        expect(formatApiError({
+            status: 500,
+            data: { message: "IllegalStateException: database password rejected" },
+        })).toBe("The server could not complete the request. Please try again later.");
+    });
 });

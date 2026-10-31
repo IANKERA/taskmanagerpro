@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.List;
 import java.util.Map;
@@ -105,7 +107,7 @@ public class UserController {
     }
 
     @PostMapping("/me/reset-password")
-    public ResponseEntity<?> resetOwnPassword(@RequestBody SelfPasswordResetRequest request) {
+    public ResponseEntity<?> resetOwnPassword(@Valid @RequestBody SelfPasswordResetRequest request) {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         Optional<User> userOpt = userService.getUserByUsername(currentUsername);
 
@@ -130,6 +132,7 @@ public class UserController {
 
 
     public static class SelfPasswordResetRequest {
+        @NotBlank
         private String oldPassword;
         private String newPassword;
 
@@ -178,7 +181,11 @@ public class UserController {
 
     /** Update notification preferences for current user. */
     @PutMapping("/me/notification-preferences")
-    public ResponseEntity<Map<String, Boolean>> updateNotifPrefs(@RequestBody Map<String, Boolean> body) {
+    public ResponseEntity<?> updateNotifPrefs(@RequestBody Map<String, Boolean> body) {
+        if (body == null || body.values().stream().anyMatch(java.util.Objects::isNull)) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("message", "Notification preferences must be boolean values."));
+        }
         NotificationPreference p = notificationService.savePreferences(
             body.getOrDefault("notifyAssigned", true),
             body.getOrDefault("notifyMentioned", true),

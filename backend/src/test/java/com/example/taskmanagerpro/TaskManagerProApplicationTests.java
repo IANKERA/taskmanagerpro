@@ -23,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import com.example.taskmanagerpro.dto.BulkUpdateRequest;
 import com.example.taskmanagerpro.dto.CreateCommentRequest;
 import com.example.taskmanagerpro.model.enums.ProjectRole;
+import com.example.taskmanagerpro.security.JwtService;
 import com.example.taskmanagerpro.service.AttachmentService;
 import com.example.taskmanagerpro.service.AttachmentCleanupService;
 import com.example.taskmanagerpro.service.CommentService;
@@ -79,6 +80,7 @@ class TaskManagerProApplicationTests {
     @Autowired private TaskService taskService;
     @Autowired private AttachmentService attachmentService;
     @Autowired private AttachmentCleanupService attachmentCleanupService;
+    @Autowired private JwtService jwtService;
 
     @DynamicPropertySource
     static void configureDatabase(DynamicPropertyRegistry registry) {
@@ -545,12 +547,19 @@ class TaskManagerProApplicationTests {
             VALUES (?, ?, 'FIELD_CHANGED', 'status', 'PENDING', 'IN_PROGRESS', CURRENT_TIMESTAMP - INTERVAL '1 day')
         """, taskId, fixture.userId());
 
-        authenticate(fixture.username());
+        String token = jwtService.generateToken(fixture.username());
 
-        mockMvc.perform(get("/api/projects/" + fixture.projectKey() + "/analytics/cfd?days=7"))
+        mockMvc.perform(get("/api/projects/" + fixture.projectKey() + "/analytics/cfd?days=7")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[-1].IN_PROGRESS").value(1));
+
+        ProjectFixture outsider = createProject("ADMIN");
+        String outsiderToken = jwtService.generateToken(outsider.username());
+        mockMvc.perform(get("/api/projects/" + fixture.projectKey() + "/analytics/cfd?days=7")
+                        .header("Authorization", "Bearer " + outsiderToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test

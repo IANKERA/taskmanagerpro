@@ -104,6 +104,16 @@ public class IssueService {
         User reporter = projectService.currentUser();
         User assignee = resolveAssignee(p.getId(), req.getAssigneeUsername());
 
+        Task parent = null;
+        if (req.getParentIssueKey() != null && !req.getParentIssueKey().isBlank()) {
+            parent = taskRepo.findByIssueKeyWithRelations(req.getParentIssueKey())
+                    .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST,
+                            "Parent issue not found: " + req.getParentIssueKey()));
+            if (!parent.getProject().getId().equals(p.getId())) {
+                throw new ResponseStatusException(BAD_REQUEST, "Parent is in a different project");
+            }
+        }
+
         Task t = Task.builder()
                 .project(p)
                 .issueKey(issueKeyAllocator.allocate(p.getId()))
@@ -115,6 +125,7 @@ public class IssueService {
                 .dueDate(req.getDueDate() == null ? null : req.getDueDate().atStartOfDay())
                 .reporter(reporter)
                 .assignee(assignee)
+                .parent(parent)
                 .build();
         t = taskRepo.save(t);
         activityService.logCreated(t, reporter);

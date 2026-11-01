@@ -6,6 +6,12 @@ export const listSprints = (projectKey) =>
 export const createSprint = (projectKey, body) =>
     api.post(`/api/projects/${projectKey}/sprints`, body).then((r) => r.data);
 
+export const getSprint = (id) =>
+    api.get(`/api/sprints/${id}`).then((r) => r.data);
+
+export const updateSprint = (id, body) =>
+    api.patch(`/api/sprints/${id}`, body).then((r) => r.data);
+
 export const startSprint = (id) =>
     api.post(`/api/sprints/${id}/start`).then((r) => r.data);
 

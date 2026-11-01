@@ -8,3 +8,6 @@ export const getNotifPrefs = () =>
 
 export const updateNotifPrefs = (prefs) =>
     api.put("/api/users/me/notification-preferences", prefs).then((r) => r.data);
+
+export const changePassword = ({ currentPassword, newPassword, confirmPassword }) =>
+    api.post("/api/users/me/change-password", { currentPassword, newPassword, confirmPassword }).then((r) => r.data);

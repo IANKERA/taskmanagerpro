@@ -25,4 +25,7 @@ public class CreateIssueRequest {
 
     /** Optional — issues can be unassigned. */
     private String assigneeUsername;
+
+    /** Optional — parent issue key (e.g. for subtasks or stories linked to an epic). */
+    private String parentIssueKey;
 }

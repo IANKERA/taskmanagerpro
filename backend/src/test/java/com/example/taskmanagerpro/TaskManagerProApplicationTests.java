@@ -83,6 +83,8 @@ class TaskManagerProApplicationTests {
     @Autowired private AttachmentCleanupService attachmentCleanupService;
     @Autowired private JwtService jwtService;
     @Autowired private DueDateReminder dueDateReminder;
+    @Autowired private com.example.taskmanagerpro.service.UserService userService;
+    @Autowired private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @DynamicPropertySource
     static void configureDatabase(DynamicPropertyRegistry registry) {
@@ -860,6 +862,162 @@ class TaskManagerProApplicationTests {
                 "SELECT COUNT(*) FROM notifications WHERE task_id = ? AND type = 'DUE_DATE'",
                 Integer.class, t);
         assertTrue(countAfter > countBefore);
+    }
+
+    @Test
+    void changePasswordUnauthenticatedReturns401Or403() throws Exception {
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"OldPass123!\",\"newPassword\":\"NewPass456!\"}"))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    assertTrue(status == 401 || status == 403, "Expected 401 or 403 but got: " + status);
+                });
+    }
+
+    @Test
+    void changePasswordSuccessStoresBcryptHashAndEnablesLoginWithNewPassword() throws Exception {
+        String username = "cp-user-" + UUID.randomUUID().toString().substring(0, 8);
+        userService.registerUser(username, "OldPassword123!");
+
+        String loginBody = String.format("{\"username\":\"%s\",\"password\":\"OldPassword123!\"}", username);
+        String loginRes = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String token = jwtService.extractUsername(loginRes.contains("token")
+                ? loginRes.split("\"token\":\"")[1].split("\"")[0]
+                : loginRes);
+        String rawJwt = loginRes.split("\"token\":\"")[1].split("\"")[0];
+
+        // Call change password
+        String changePayload = "{\"currentPassword\":\"OldPassword123!\",\"newPassword\":\"BrandNewPass456!\",\"confirmPassword\":\"BrandNewPass456!\"}";
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .header("Authorization", "Bearer " + rawJwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password updated successfully."))
+                .andExpect(jsonPath("$.token").isString());
+
+        // Verify stored BCrypt hash in DB
+        String storedHash = jdbcTemplate.queryForObject(
+                "SELECT password FROM users WHERE username = ?", String.class, username);
+        assertTrue(storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$"),
+                "Stored password must be a BCrypt hash");
+        assertTrue(passwordEncoder.matches("BrandNewPass456!", storedHash),
+                "Stored hash must match new password");
+        assertFalse(passwordEncoder.matches("OldPassword123!", storedHash),
+                "Stored hash must no longer match old password");
+
+        // Old password login must now fail (401 Bad credentials)
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginBody))
+                .andExpect(status().is4xxClientError());
+
+        // New password login must succeed
+        String newLoginBody = String.format("{\"username\":\"%s\",\"password\":\"BrandNewPass456!\"}", username);
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newLoginBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString());
+    }
+
+    @Test
+    void changePasswordFailsWithIncorrectCurrentPassword() throws Exception {
+        String username = "cp-wrong-" + UUID.randomUUID().toString().substring(0, 8);
+        userService.registerUser(username, "CorrectOld123!");
+
+        String token = jwtService.generateToken(username);
+
+        String changePayload = "{\"currentPassword\":\"WrongOld123!\",\"newPassword\":\"NewPass456!\",\"confirmPassword\":\"NewPass456!\"}";
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changePayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Incorrect current password."));
+
+        // Verify old password still works
+        String storedHash = jdbcTemplate.queryForObject(
+                "SELECT password FROM users WHERE username = ?", String.class, username);
+        assertTrue(passwordEncoder.matches("CorrectOld123!", storedHash));
+    }
+
+    @Test
+    void changePasswordFailsWhenNewPasswordViolatesPolicy() throws Exception {
+        String username = "cp-policy-" + UUID.randomUUID().toString().substring(0, 8);
+        userService.registerUser(username, "ValidOld123!");
+
+        String token = jwtService.generateToken(username);
+
+        // Missing uppercase
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"ValidOld123!\",\"newPassword\":\"weakpassword123!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Password must contain at least one uppercase letter."));
+
+        // Missing number
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"ValidOld123!\",\"newPassword\":\"WeakPassword!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Password must contain at least one number."));
+
+        // Missing special character
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"ValidOld123!\",\"newPassword\":\"WeakPassword123\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Password must contain at least one special character."));
+
+        // Same as old password
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"ValidOld123!\",\"newPassword\":\"ValidOld123!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("New password must be different from current password."));
+    }
+
+    @Test
+    void changePasswordCannotChangeAnotherUserViaArbitraryId() throws Exception {
+        String alice = "alice-" + UUID.randomUUID().toString().substring(0, 8);
+        String bob = "bob-" + UUID.randomUUID().toString().substring(0, 8);
+        userService.registerUser(alice, "AlicePass123!");
+        userService.registerUser(bob, "BobPass123!");
+
+        long bobId = jdbcTemplate.queryForObject(
+                "SELECT id FROM users WHERE username = ?", Long.class, bob);
+
+        String aliceToken = jwtService.generateToken(alice);
+
+        // Alice (regular user) attempting to reset Bob's password via admin endpoint fails with 403
+        mockMvc.perform(post("/api/users/" + bobId + "/reset-password")
+                        .header("Authorization", "Bearer " + aliceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newPassword\":\"HackedPass123!\"}"))
+                .andExpect(status().isForbidden());
+
+        // Alice calling /me/change-password only changes Alice's password
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .header("Authorization", "Bearer " + aliceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"AlicePass123!\",\"newPassword\":\"AliceNew123!\"}"))
+                .andExpect(status().isOk());
+
+        // Bob's password in DB is unaffected and still matches BobPass123!
+        String bobHash = jdbcTemplate.queryForObject(
+                "SELECT password FROM users WHERE username = ?", String.class, bob);
+        assertTrue(passwordEncoder.matches("BobPass123!", bobHash));
     }
 
     private void assertTimestampColumn(String columnName) {

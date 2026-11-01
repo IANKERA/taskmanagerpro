@@ -14,6 +14,7 @@ import api from "../api/client";
 import IssueCard from "../components/board/IssueCard";
 import BoardFilters, { applyFilters } from "../components/board/BoardFilters";
 import AssigneeSelect from "../components/AssigneeSelect";
+import ParentSelector from "../components/ParentSelector";
 
 const COLUMNS = [
     { id: "PENDING",     title: "To Do" },
@@ -656,6 +657,8 @@ function CreateIssueForm({ projectKey, onDone }) {
         description: "",
         issueType: "TASK",
         priority: "MEDIUM",
+        assigneeUsername: "",
+        parentIssueKey: "",
     });
 
     const { data: templates = [] } = useQuery({
@@ -675,7 +678,11 @@ function CreateIssueForm({ projectKey, onDone }) {
     };
 
     const mut = useMutation({
-        mutationFn: (body) => createIssue(projectKey, body),
+        mutationFn: (body) =>
+            createIssue(projectKey, {
+                ...body,
+                parentIssueKey: body.parentIssueKey || undefined,
+            }),
         onSuccess: () => { toast.success("Issue created"); onDone(); },
         onError: (e) => toast.error(e.message),
     });
@@ -712,6 +719,12 @@ function CreateIssueForm({ projectKey, onDone }) {
                 projectKey={projectKey}
                 value={form.assigneeUsername || ""}
                 onChange={(assigneeUsername) => setForm({ ...form, assigneeUsername })}
+            />
+            <ParentSelector
+                projectKey={projectKey}
+                value={form.parentIssueKey}
+                onChange={(parentIssueKey) => setForm({ ...form, parentIssueKey })}
+                placeholder="Parent / Epic (optional)…"
             />
             <div className="flex gap-2 items-center">
                 <select

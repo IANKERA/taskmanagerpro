@@ -129,5 +129,22 @@ class AnalyticsControllerPerformanceTests {
         verify(taskRepo, never()).findByProjectIdWithRelations(any());
         verify(activityLogRepo, never()).findStatusChangesByProjectId(any());
     }
+
+    @Test
+    void cfdSupportsConfiguredDaysAndEnforcesNinetyDayCap() {
+        Project project = Project.builder().id(10L).key("CFD").build();
+        when(projectService.getByKey("CFD")).thenReturn(project);
+        when(taskRepo.findCfdProjectionsByProjectId(10L)).thenReturn(List.of());
+
+        // Test supported ranges: 7, 14, 30, 60, 90 days (start to end inclusive: days + 1)
+        assertEquals(8, analyticsController.cumulativeFlowDiagram("CFD", 7).size());
+        assertEquals(15, analyticsController.cumulativeFlowDiagram("CFD", 14).size());
+        assertEquals(31, analyticsController.cumulativeFlowDiagram("CFD", 30).size());
+        assertEquals(61, analyticsController.cumulativeFlowDiagram("CFD", 60).size());
+        assertEquals(91, analyticsController.cumulativeFlowDiagram("CFD", 90).size());
+
+        // Test capping at 90 days when a higher value is provided
+        assertEquals(91, analyticsController.cumulativeFlowDiagram("CFD", 120).size());
+    }
 }
 

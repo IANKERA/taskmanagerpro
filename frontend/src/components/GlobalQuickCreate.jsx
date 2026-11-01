@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { listProjects } from "../api/projects";
 import { createIssue } from "../api/issues";
 import AssigneeSelect from "./AssigneeSelect";
+import ParentSelector from "./ParentSelector";
 
 export default function GlobalQuickCreate() {
     const [open, setOpen] = useState(false);
@@ -40,6 +41,7 @@ function QuickCreateModal({ onClose, navigate }) {
         issueType: "TASK",
         priority: "MEDIUM",
         assigneeUsername: "",
+        parentIssueKey: "",
     });
 
     // Auto-select first project
@@ -55,6 +57,7 @@ function QuickCreateModal({ onClose, navigate }) {
             issueType: form.issueType,
             priority: form.priority,
             assigneeUsername: form.assigneeUsername,
+            parentIssueKey: form.parentIssueKey || undefined,
         }),
         onSuccess: (issue) => {
             toast.success(`Created ${issue.issueKey}`);
@@ -112,6 +115,12 @@ function QuickCreateModal({ onClose, navigate }) {
                         projectKey={form.projectKey}
                         value={form.assigneeUsername}
                         onChange={(assigneeUsername) => setForm({ ...form, assigneeUsername })}
+                    />
+                    <ParentSelector
+                        projectKey={form.projectKey}
+                        value={form.parentIssueKey}
+                        onChange={(parentIssueKey) => setForm({ ...form, parentIssueKey })}
+                        placeholder="Parent / Epic (optional)…"
                     />
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <span className="hidden text-xs text-slate-400 sm:block dark:text-slate-500">Ctrl+N to open · Esc to close</span>

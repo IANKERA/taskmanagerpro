@@ -1,12 +1,15 @@
 package com.example.taskmanagerpro.controller;
 
+import com.example.taskmanagerpro.dto.ChangePasswordRequest;
 import com.example.taskmanagerpro.dto.Mapper;
 import com.example.taskmanagerpro.dto.UserDTO;
 import com.example.taskmanagerpro.model.NotificationPreference;
 import com.example.taskmanagerpro.model.User;
 import com.example.taskmanagerpro.model.enums.Role;
+import com.example.taskmanagerpro.security.JwtService;
 import com.example.taskmanagerpro.service.NotificationService;
 import com.example.taskmanagerpro.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,10 +29,17 @@ public class UserController {
 
     private final UserService userService;
     private final NotificationService notificationService;
+    private final JwtService jwtService;
 
-    public UserController(UserService userService, NotificationService notificationService) {
+    @Autowired
+    public UserController(UserService userService, NotificationService notificationService, @Autowired(required = false) JwtService jwtService) {
         this.userService = userService;
         this.notificationService = notificationService;
+        this.jwtService = jwtService;
+    }
+
+    public UserController(UserService userService, NotificationService notificationService) {
+        this(userService, notificationService, null);
     }
 
     /** Current-user profile — accessible to any authenticated user. */
@@ -141,6 +151,48 @@ public class UserController {
             return ResponseEntity.ok("Password updated successfully.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/me/change-password")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        Optional<User> userOpt = userService.getUserByUsername(currentUsername);
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found."));
+        }
+
+        User user = userOpt.get();
+        String currentPass = request.getCurrentPassword();
+
+        if (currentPass == null || currentPass.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Current password must not be blank."));
+        }
+
+        if (!userService.checkPassword(user, currentPass)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Incorrect current password."));
+        }
+
+        if (request.getConfirmPassword() != null && !request.getConfirmPassword().isBlank()
+                && !request.getConfirmPassword().equals(request.getNewPassword())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "New passwords do not match."));
+        }
+
+        if (currentPass.equals(request.getNewPassword())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "New password must be different from current password."));
+        }
+
+        try {
+            userService.updatePassword(user, request.getNewPassword());
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("message", "Password updated successfully.");
+            if (jwtService != null) {
+                response.put("token", jwtService.generateToken(user.getUsername()));
+            }
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 

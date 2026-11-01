@@ -136,4 +136,26 @@ class ApiRequestValidationTests {
         verifyNoInteractions(userService);
         verifyNoInteractions(notificationService);
     }
+
+    @Test
+    void changePasswordRejectsMissingCurrentPasswordAsValidationError() throws Exception {
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newPassword\":\"Password123!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("currentPassword: Current password must not be blank")));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void changePasswordRejectsMissingNewPasswordAsValidationError() throws Exception {
+        mockMvc.perform(post("/api/users/me/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"OldPassword123!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("newPassword: New password must not be blank")));
+
+        verifyNoInteractions(userService);
+    }
 }

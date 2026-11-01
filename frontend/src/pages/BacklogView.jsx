@@ -15,6 +15,7 @@ import { createIssue, bulkUpdateIssues, reorderIssues } from "../api/issues";
 import { listSprints } from "../api/sprints";
 import IssueCard from "../components/board/IssueCard";
 import AssigneeSelect from "../components/AssigneeSelect";
+import ParentSelector from "../components/ParentSelector";
 
 export default function BacklogView() {
     const { projectKey } = useParams();
@@ -312,9 +313,14 @@ function BacklogCreateForm({ projectKey, onDone }) {
         issueType: "TASK",
         priority: "MEDIUM",
         assigneeUsername: "",
+        parentIssueKey: "",
     });
     const mut = useMutation({
-        mutationFn: (body) => createIssue(projectKey, body),
+        mutationFn: (body) =>
+            createIssue(projectKey, {
+                ...body,
+                parentIssueKey: body.parentIssueKey || undefined,
+            }),
         onSuccess: () => { toast.success("Issue created in backlog"); onDone(); },
         onError: (e) => toast.error(e.message),
     });
@@ -335,6 +341,12 @@ function BacklogCreateForm({ projectKey, onDone }) {
                 projectKey={projectKey}
                 value={form.assigneeUsername}
                 onChange={(assigneeUsername) => setForm({ ...form, assigneeUsername })}
+            />
+            <ParentSelector
+                projectKey={projectKey}
+                value={form.parentIssueKey}
+                onChange={(parentIssueKey) => setForm({ ...form, parentIssueKey })}
+                placeholder="Parent / Epic (optional)…"
             />
             <div className="flex gap-2 items-center">
                 <select

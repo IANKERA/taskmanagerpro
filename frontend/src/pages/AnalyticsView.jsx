@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
     PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
 } from "recharts";
-import { getAnalytics } from "../api/analytics";
-import api from "../api/client";
+import { getAnalytics, getCfd } from "../api/analytics";
+import TimeRangeSelector from "../components/TimeRangeSelector";
 
 const STATUS_COLORS = { PENDING: "#94a3b8", IN_PROGRESS: "#3b82f6", DONE: "#22c55e" };
 const PRIORITY_COLORS = { LOW: "#22c55e", MEDIUM: "#f59e0b", HIGH: "#ef4444" };
@@ -20,18 +21,55 @@ function toChartData(map, colorMap) {
 export default function AnalyticsView() {
     const { projectKey } = useParams();
     const navigate = useNavigate();
-    const { data, isLoading } = useQuery({
+    const [days, setDays] = useState(30);
+
+    const {
+        data,
+        isLoading,
+        isError: isAnalyticsError,
+        error: analyticsError,
+        refetch: refetchAnalytics,
+    } = useQuery({
         queryKey: ["analytics", projectKey],
         queryFn: () => getAnalytics(projectKey),
     });
 
-    const { data: cfdData = [] } = useQuery({
-        queryKey: ["cfd", projectKey],
-        queryFn: () => api.get(`/api/projects/${projectKey}/analytics/cfd`, { params: { days: 30 } }).then((r) => r.data),
+    const {
+        data: cfdData = [],
+        isLoading: isCfdLoading,
+        isError: isCfdError,
+        error: cfdError,
+        refetch: refetchCfd,
+    } = useQuery({
+        queryKey: ["cfd", projectKey, days],
+        queryFn: () => getCfd(projectKey, days),
     });
 
-    if (isLoading) return <div className="text-slate-500">Loading analytics…</div>;
-    if (!data) return null;
+    if (isLoading) {
+        return (
+            <div className="text-slate-500 dark:text-slate-400 p-6 text-center" role="status">
+                Loading analytics…
+            </div>
+        );
+    }
+
+    if (isAnalyticsError || !data) {
+        return (
+            <div className="p-8 text-center text-sm" role="alert">
+                <p className="text-red-600 dark:text-red-400 font-medium">Failed to load project analytics.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {analyticsError?.message || "An unexpected error occurred."}
+                </p>
+                <button
+                    type="button"
+                    onClick={() => refetchAnalytics()}
+                    className="mt-3 px-4 py-1.5 text-sm font-medium rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
 
     const statusData = toChartData(data.statusBreakdown, STATUS_COLORS);
     const priorityData = toChartData(data.priorityBreakdown, PRIORITY_COLORS);
@@ -167,9 +205,42 @@ export default function AnalyticsView() {
             )}
 
             {/* Cumulative Flow Diagram */}
-            <ChartCard title="Cumulative Flow Diagram (30 days)">
-                {cfdData.length === 0 ? (
-                    <div className="text-sm text-slate-500 dark:text-slate-400 py-8 text-center">No data yet.</div>
+            <ChartCard
+                title={`Cumulative Flow Diagram (${days} days)`}
+                action={
+                    <TimeRangeSelector
+                        id="cfd-time-range-select"
+                        value={days}
+                        onChange={setDays}
+                    />
+                }
+            >
+                {isCfdLoading ? (
+                    <div
+                        className="text-sm text-slate-500 dark:text-slate-400 py-16 text-center flex flex-col items-center justify-center gap-2"
+                        role="status"
+                    >
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        <span>Loading chart data…</span>
+                    </div>
+                ) : isCfdError ? (
+                    <div className="py-10 text-center text-sm" role="alert">
+                        <p className="text-red-600 dark:text-red-400 font-medium">Failed to load Cumulative Flow Diagram.</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            {cfdError?.message || "An unexpected error occurred while fetching CFD data."}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => refetchCfd()}
+                            className="mt-3 px-3 py-1 text-xs font-medium rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                ) : cfdData.length === 0 ? (
+                    <div className="text-sm text-slate-500 dark:text-slate-400 py-12 text-center">
+                        No data available for the selected time range ({days} days).
+                    </div>
                 ) : (
                     <ResponsiveContainer width="100%" height={280}>
                         <AreaChart data={cfdData}>
@@ -217,10 +288,13 @@ function StatCard({ label, value, color = "", textColor = "text-slate-900 dark:t
     );
 }
 
-function ChartCard({ title, children }) {
+function ChartCard({ title, children, action }) {
     return (
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">{title}</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
+                {action}
+            </div>
             {children}
         </div>
     );

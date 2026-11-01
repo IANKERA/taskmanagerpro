@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { listSprints, createSprint, startSprint, closeSprint, listSprintIssues, sprintBurndown } from "../api/sprints";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from "recharts";
 import ConfirmDialog from "../components/ConfirmDialog";
+import EditSprintModal from "../components/sprints/EditSprintModal";
 import { updateIssue } from "../api/issues";
 
 const STATE_STYLES = {
@@ -136,6 +137,7 @@ function VelocityChart({ sprints }) {
 function SprintPanel({ sprint: s, projectKey, allSprints, activeSprint, onStart, onClose, startPending, closePending }) {
     const [expanded, setExpanded] = useState(s.state === "ACTIVE");
     const [confirmClose, setConfirmClose] = useState(false);
+    const [editing, setEditing] = useState(false);
     const navigate = useNavigate();
     const qc = useQueryClient();
 
@@ -201,6 +203,15 @@ function SprintPanel({ sprint: s, projectKey, allSprints, activeSprint, onStart,
                     )}
                 </div>
                 <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {s.state !== "CLOSED" && (
+                        <button
+                            type="button"
+                            onClick={() => setEditing(true)}
+                            className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            Edit
+                        </button>
+                    )}
                     {s.state === "PLANNED" && (
                         <button
                             disabled={startPending || !!activeSprint}
@@ -319,6 +330,15 @@ function SprintPanel({ sprint: s, projectKey, allSprints, activeSprint, onStart,
                         </div>
                     )}
                 </div>
+            )}
+
+            {editing && (
+                <EditSprintModal
+                    sprint={s}
+                    projectKey={projectKey}
+                    open={editing}
+                    onClose={() => setEditing(false)}
+                />
             )}
         </div>
     );

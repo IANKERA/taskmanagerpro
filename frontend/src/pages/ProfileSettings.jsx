@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { updateEmail, getNotifPrefs, updateNotifPrefs } from "../api/userSettings";
 import { useAuth } from "../context/AuthContext";
+import ChangePasswordForm from "../components/profile/ChangePasswordForm";
 import toast from "react-hot-toast";
 
 export default function ProfileSettings() {
@@ -13,6 +14,7 @@ export default function ProfileSettings() {
             <h1 className="text-2xl font-bold dark:text-white">Profile Settings</h1>
             <EmailSection user={user} />
             <NotificationPrefsSection />
+            <ChangePasswordForm />
         </div>
     );
 }

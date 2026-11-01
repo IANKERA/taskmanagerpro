@@ -1,8 +1,10 @@
 package com.example.taskmanagerpro.controller;
 
+import com.example.taskmanagerpro.dto.ChangePasswordRequest;
 import com.example.taskmanagerpro.dto.UserDTO;
 import com.example.taskmanagerpro.model.User;
 import com.example.taskmanagerpro.model.enums.Role;
+import com.example.taskmanagerpro.security.JwtService;
 import com.example.taskmanagerpro.service.NotificationService;
 import com.example.taskmanagerpro.service.UserService;
 import org.junit.jupiter.api.AfterEach;
@@ -34,11 +36,14 @@ class UserControllerAuthorizationTests {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private JwtService jwtService;
+
     private UserController userController;
 
     @BeforeEach
     void setUp() {
-        userController = new UserController(userService, notificationService);
+        userController = new UserController(userService, notificationService, jwtService);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         "adminUser", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
@@ -162,6 +167,137 @@ class UserControllerAuthorizationTests {
 
         assertEquals(409, ex.getStatusCode().value());
         assertEquals("Cannot delete user: user has associated issues or project records", ex.getReason());
+    }
+
+    @Test
+    void changePasswordSuccessReturnsOkAndNewToken() {
+        User user = User.builder().id(1L).username("adminUser").password("hashedOld").role(Role.ROLE_ADMIN).build();
+        when(userService.getUserByUsername("adminUser")).thenReturn(Optional.of(user));
+        when(userService.checkPassword(user, "OldPass123!")).thenReturn(true);
+        when(jwtService.generateToken("adminUser")).thenReturn("new-jwt-token");
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("OldPass123!")
+                .newPassword("NewPass456!")
+                .confirmPassword("NewPass456!")
+                .build();
+
+        ResponseEntity<?> response = userController.changePassword(request);
+
+        assertEquals(200, response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> body = (java.util.Map<String, Object>) response.getBody();
+        assertEquals("Password updated successfully.", body.get("message"));
+        assertEquals("new-jwt-token", body.get("token"));
+        verify(userService).updatePassword(user, "NewPass456!");
+    }
+
+    @Test
+    void changePasswordRejectsIncorrectCurrentPassword() {
+        User user = User.builder().id(1L).username("adminUser").password("hashedOld").role(Role.ROLE_ADMIN).build();
+        when(userService.getUserByUsername("adminUser")).thenReturn(Optional.of(user));
+        when(userService.checkPassword(user, "WrongPass123!")).thenReturn(false);
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("WrongPass123!")
+                .newPassword("NewPass456!")
+                .confirmPassword("NewPass456!")
+                .build();
+
+        ResponseEntity<?> response = userController.changePassword(request);
+
+        assertEquals(400, response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> body = (java.util.Map<String, Object>) response.getBody();
+        assertEquals("Incorrect current password.", body.get("message"));
+        verify(userService, never()).updatePassword(any(), any());
+    }
+
+    @Test
+    void changePasswordRejectsIdenticalNewPassword() {
+        User user = User.builder().id(1L).username("adminUser").password("hashedOld").role(Role.ROLE_ADMIN).build();
+        when(userService.getUserByUsername("adminUser")).thenReturn(Optional.of(user));
+        when(userService.checkPassword(user, "SamePassword123!")).thenReturn(true);
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("SamePassword123!")
+                .newPassword("SamePassword123!")
+                .confirmPassword("SamePassword123!")
+                .build();
+
+        ResponseEntity<?> response = userController.changePassword(request);
+
+        assertEquals(400, response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> body = (java.util.Map<String, Object>) response.getBody();
+        assertEquals("New password must be different from current password.", body.get("message"));
+        verify(userService, never()).updatePassword(any(), any());
+    }
+
+    @Test
+    void changePasswordRejectsMismatchedConfirmPassword() {
+        User user = User.builder().id(1L).username("adminUser").password("hashedOld").role(Role.ROLE_ADMIN).build();
+        when(userService.getUserByUsername("adminUser")).thenReturn(Optional.of(user));
+        when(userService.checkPassword(user, "OldPass123!")).thenReturn(true);
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("OldPass123!")
+                .newPassword("NewPass456!")
+                .confirmPassword("DifferentPass456!")
+                .build();
+
+        ResponseEntity<?> response = userController.changePassword(request);
+
+        assertEquals(400, response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> body = (java.util.Map<String, Object>) response.getBody();
+        assertEquals("New passwords do not match.", body.get("message"));
+        verify(userService, never()).updatePassword(any(), any());
+    }
+
+    @Test
+    void changePasswordCatchesPolicyViolationFromUserService() {
+        User user = User.builder().id(1L).username("adminUser").password("hashedOld").role(Role.ROLE_ADMIN).build();
+        when(userService.getUserByUsername("adminUser")).thenReturn(Optional.of(user));
+        when(userService.checkPassword(user, "OldPass123!")).thenReturn(true);
+        doThrow(new IllegalArgumentException("Password must contain at least one uppercase letter."))
+                .when(userService).updatePassword(user, "weakpass123!");
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("OldPass123!")
+                .newPassword("weakpass123!")
+                .confirmPassword("weakpass123!")
+                .build();
+
+        ResponseEntity<?> response = userController.changePassword(request);
+
+        assertEquals(400, response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> body = (java.util.Map<String, Object>) response.getBody();
+        assertEquals("Password must contain at least one uppercase letter.", body.get("message"));
+    }
+
+    @Test
+    void changePasswordAlwaysOperatesOnSecurityContextUser() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        "alice", null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        User alice = User.builder().id(10L).username("alice").password("hashedAlice").role(Role.ROLE_USER).build();
+        when(userService.getUserByUsername("alice")).thenReturn(Optional.of(alice));
+        when(userService.checkPassword(alice, "AliceOld123!")).thenReturn(true);
+
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("AliceOld123!")
+                .newPassword("AliceNew456!")
+                .build();
+
+        ResponseEntity<?> response = userController.changePassword(request);
+
+        assertEquals(200, response.getStatusCode().value());
+        verify(userService).getUserByUsername("alice");
+        verify(userService, never()).getUserByUsername("bob");
+        verify(userService).updatePassword(alice, "AliceNew456!");
     }
 }
 

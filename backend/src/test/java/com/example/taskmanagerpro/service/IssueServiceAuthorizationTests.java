@@ -176,6 +176,61 @@ class IssueServiceAuthorizationTests {
         verify(timeLogRepository).delete(timeLog);
     }
 
+    @Test
+    void createIssueSetsParentWhenValid() {
+        Project project = new Project();
+        project.setId(10L);
+        project.setKey("ALPHA");
+
+        Task parent = task(1L, 10L);
+        parent.setIssueKey("ALPHA-1");
+
+        User reporter = user(2L, "alice");
+
+        when(projectService.getByKey("ALPHA")).thenReturn(project);
+        when(projectService.currentUser()).thenReturn(reporter);
+        when(taskRepository.findByIssueKeyWithRelations("ALPHA-1")).thenReturn(Optional.of(parent));
+        when(issueKeyAllocator.allocate(10L)).thenReturn("ALPHA-2");
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateIssueRequest req = new CreateIssueRequest();
+        req.setTitle("Subtask 1");
+        req.setParentIssueKey("ALPHA-1");
+
+        Task created = createService().create("ALPHA", req);
+
+        assertEquals("ALPHA-2", created.getIssueKey());
+        assertEquals("Subtask 1", created.getTitle());
+        assertEquals(parent, created.getParent());
+    }
+
+    @Test
+    void createIssueRejectsParentFromDifferentProject() {
+        Project project = new Project();
+        project.setId(10L);
+        project.setKey("ALPHA");
+
+        Task parentInOtherProject = task(1L, 20L);
+        parentInOtherProject.setIssueKey("BETA-1");
+
+        User reporter = user(2L, "alice");
+
+        when(projectService.getByKey("ALPHA")).thenReturn(project);
+        when(projectService.currentUser()).thenReturn(reporter);
+        when(taskRepository.findByIssueKeyWithRelations("BETA-1")).thenReturn(Optional.of(parentInOtherProject));
+
+        CreateIssueRequest req = new CreateIssueRequest();
+        req.setTitle("Subtask 1");
+        req.setParentIssueKey("BETA-1");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> createService().create("ALPHA", req));
+
+        assertEquals(400, exception.getStatusCode().value());
+        assertEquals("Parent is in a different project", exception.getReason());
+    }
+
     private Task task(Long id, Long projectId) {
         Project project = new Project();
         project.setId(projectId);

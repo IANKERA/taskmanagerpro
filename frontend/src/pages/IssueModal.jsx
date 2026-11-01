@@ -16,6 +16,8 @@ import { listLabels, listMembers } from "../api/projects";
 import Markdown from "../components/Markdown";
 import MentionTextarea from "../components/MentionTextarea";
 import AssigneeSelect from "../components/AssigneeSelect";
+import ParentSelector from "../components/ParentSelector";
+import { formatApiError } from "../api/errorMessage";
 import { getFieldValues, setFieldValues } from "../api/customFields";
 import { useRecentIssues } from "../hooks/useRecentIssues";
 
@@ -217,16 +219,18 @@ export default function IssueModal() {
                                     <SprintPicker issue={issue} projectKey={projectKey} onUpdate={(sprintId) => updateMut.mutate({ sprintId })} />
                                 </SidebarField>
                                 <CustomFieldsSection issueKey={issueKey} projectKey={projectKey} />
-                                {issue.parentIssueKey && (
-                                    <SidebarField label="Parent">
-                                        <button
-                                            onClick={() => navigate(`/projects/${projectKey}/board/${issue.parentIssueKey}`)}
-                                            className="text-sm text-blue-600 hover:underline font-mono"
-                                        >
-                                            {issue.parentIssueKey}
-                                        </button>
-                                    </SidebarField>
-                                )}
+                                <SidebarField label="Parent / Epic">
+                                    <ParentSelector
+                                        projectKey={projectKey}
+                                        currentIssueKey={issueKey}
+                                        value={issue.parentIssueKey || ""}
+                                        onChange={(newParentKey) => {
+                                            if ((issue.parentIssueKey || "") !== newParentKey) {
+                                                updateMut.mutate({ parentIssueKey: newParentKey });
+                                            }
+                                        }}
+                                    />
+                                </SidebarField>
                                 <div className="pt-3 border-t border-slate-200 dark:border-slate-700 space-y-2">
                                     <button
                                         onClick={() => cloneMut.mutate()}
@@ -378,33 +382,205 @@ function EditableDescription({ issue, onSave }) {
 
 function SubtasksSection({ issueKey, projectKey }) {
     const navigate = useNavigate();
+    const qc = useQueryClient();
+    const [creating, setCreating] = useState(false);
+    const [title, setTitle] = useState("");
+    const [issueType, setIssueType] = useState("TASK");
+    const [priority, setPriority] = useState("MEDIUM");
+    const [assigneeUsername, setAssigneeUsername] = useState("");
+    const [error, setError] = useState("");
+
     const { data: children = [] } = useQuery({
         queryKey: ["subtasks", issueKey],
         queryFn: () => subtasks(issueKey),
     });
-    if (children.length === 0) return null;
+
+    const createMut = useMutation({
+        mutationFn: (body) => createIssue(projectKey, body),
+        onSuccess: (newIssue) => {
+            toast.success(`Subtask created: ${newIssue.issueKey}`);
+            qc.invalidateQueries({ queryKey: ["subtasks", issueKey] });
+            qc.invalidateQueries({ queryKey: ["issues", projectKey] });
+            qc.invalidateQueries({ queryKey: ["issue", issueKey] });
+            qc.invalidateQueries({ queryKey: ["backlog", projectKey] });
+            setTitle("");
+            setCreating(false);
+            setError("");
+        },
+        onError: (err) => {
+            const msg = formatApiError(err, "Failed to create subtask.");
+            setError(msg);
+            toast.error(msg);
+        },
+    });
+
+    const unlinkMut = useMutation({
+        mutationFn: (subtaskKey) => updateIssue(subtaskKey, { parentIssueKey: "" }),
+        onSuccess: () => {
+            toast.success("Subtask unlinked from parent");
+            qc.invalidateQueries({ queryKey: ["subtasks", issueKey] });
+            qc.invalidateQueries({ queryKey: ["issues", projectKey] });
+            qc.invalidateQueries({ queryKey: ["issue", issueKey] });
+        },
+        onError: (err) => {
+            toast.error(formatApiError(err, "Failed to unlink subtask."));
+        },
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const trimmed = title.trim();
+        if (!trimmed) {
+            setError("Title is required.");
+            return;
+        }
+        setError("");
+        createMut.mutate({
+            title: trimmed,
+            issueType,
+            priority,
+            assigneeUsername: assigneeUsername || undefined,
+            parentIssueKey: issueKey,
+        });
+    };
 
     const STATUS_DOT = { PENDING: "bg-slate-400", IN_PROGRESS: "bg-blue-500", DONE: "bg-green-500" };
 
     return (
-        <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                Subtasks ({children.length})
-            </div>
-            <div className="space-y-1">
-                {children.map((c) => (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Subtasks ({children.length})
+                </div>
+                {!creating && (
                     <button
-                        key={c.id}
-                        onClick={() => navigate(`/projects/${projectKey}/board/${c.issueKey}`)}
-                        className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-700 text-sm"
+                        type="button"
+                        onClick={() => {
+                            setCreating(true);
+                            setError("");
+                        }}
+                        className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                     >
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[c.status] || "bg-slate-400"}`} />
-                        <span className="font-mono text-xs text-slate-500">{c.issueKey}</span>
-                        <span className="truncate text-slate-800">{c.title}</span>
-                        <span className="ml-auto text-xs text-slate-400">{c.assigneeUsername || "Unassigned"}</span>
+                        + Create subtask
                     </button>
-                ))}
+                )}
             </div>
+
+            {creating && (
+                <form
+                    onSubmit={handleSubmit}
+                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-2.5"
+                >
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        New Subtask for <span className="font-mono text-blue-600 dark:text-blue-400">{issueKey}</span>
+                    </div>
+
+                    {error && (
+                        <div role="alert" className="p-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 rounded border border-red-200 dark:border-red-800">
+                            {error}
+                        </div>
+                    )}
+
+                    <input
+                        type="text"
+                        autoFocus
+                        required
+                        placeholder="What needs to be done?"
+                        value={title}
+                        onChange={(e) => {
+                            setTitle(e.target.value);
+                            if (error) setError("");
+                        }}
+                        className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <select
+                            value={issueType}
+                            onChange={(e) => setIssueType(e.target.value)}
+                            className="rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-2 py-1.5 text-xs"
+                        >
+                            {["TASK", "BUG", "STORY"].map((t) => (
+                                <option key={t} value={t}>{t}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={priority}
+                            onChange={(e) => setPriority(e.target.value)}
+                            className="rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-2 py-1.5 text-xs"
+                        >
+                            {["LOW", "MEDIUM", "HIGH"].map((p) => (
+                                <option key={p} value={p}>{p}</option>
+                            ))}
+                        </select>
+
+                        <AssigneeSelect
+                            projectKey={projectKey}
+                            value={assigneeUsername}
+                            onChange={setAssigneeUsername}
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setCreating(false);
+                                setTitle("");
+                                setError("");
+                            }}
+                            className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={createMut.isPending || !title.trim()}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded disabled:opacity-50 transition-colors"
+                        >
+                            {createMut.isPending ? "Creating…" : "Create Subtask"}
+                        </button>
+                    </div>
+                </form>
+            )}
+
+            {children.length === 0 && !creating ? (
+                <div className="text-xs text-slate-400 dark:text-slate-500 py-1">
+                    No subtasks yet.
+                </div>
+            ) : (
+                <div className="space-y-1">
+                    {children.map((c) => (
+                        <div
+                            key={c.id}
+                            className="group flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 text-sm"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => navigate(`/projects/${projectKey}/board/${c.issueKey}`)}
+                                className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                            >
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[c.status] || "bg-slate-400"}`} />
+                                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 shrink-0">{c.issueKey}</span>
+                                <span className="truncate text-slate-800 dark:text-slate-200">{c.title}</span>
+                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs text-slate-400 dark:text-slate-500">{c.assigneeUsername || "Unassigned"}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => unlinkMut.mutate(c.issueKey)}
+                                    title="Unlink subtask from parent"
+                                    className="opacity-0 group-hover:opacity-100 rounded p-0.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 text-xs transition-opacity"
+                                    aria-label={`Unlink subtask ${c.issueKey}`}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

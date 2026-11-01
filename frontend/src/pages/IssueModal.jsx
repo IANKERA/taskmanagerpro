@@ -594,7 +594,25 @@ function AttachmentsSection({ issueKey }) {
     );
 }
 
-function CommentsSection({ issueKey, projectKey }) {
+function renderCommentBody(body) {
+    if (!body || typeof body !== "string") return null;
+    const parts = body.split(/(\B@[a-zA-Z0-9_-]+)/g);
+    return parts.map((part, i) => {
+        if (/^@[a-zA-Z0-9_-]+$/.test(part)) {
+            return (
+                <span
+                    key={i}
+                    className="font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-1 py-0.5 rounded"
+                >
+                    {part}
+                </span>
+            );
+        }
+        return part;
+    });
+}
+
+export function CommentsSection({ issueKey, projectKey }) {
     const qc = useQueryClient();
     const { user } = useAuth();
     const [draft, setDraft] = useState("");
@@ -641,24 +659,24 @@ function CommentsSection({ issueKey, projectKey }) {
             </div>
             <div className="space-y-3 mb-3">
                 {comments.map((c) => (
-                    <div key={c.id} className="bg-slate-50 dark:bg-slate-700/50 rounded p-3 group">
-                        <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                    <div key={c.id} className="bg-slate-50 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-lg p-3 group">
+                        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1.5">
                             <div>
-                                <span className="font-medium text-slate-700">{c.authorUsername}</span>
-                                {" · "}
-                                {new Date(c.createdAt).toLocaleString()}
+                                <span className="font-medium text-slate-700 dark:text-slate-200">{c.authorUsername}</span>
+                                <span className="mx-1 text-slate-400 dark:text-slate-500">·</span>
+                                <span>{new Date(c.createdAt).toLocaleString()}</span>
                             </div>
                             {user?.username === c.authorUsername && editingId !== c.id && (
                                 <div className="opacity-0 group-hover:opacity-100 flex gap-2 transition-opacity">
                                     <button
                                         onClick={() => { setEditingId(c.id); setEditDraft(c.body); }}
-                                        className="text-slate-400 hover:text-blue-600"
+                                        className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
                                     >
                                         Edit
                                     </button>
                                     <button
                                         onClick={() => { if (confirm("Delete this comment?")) deleteMut.mutate(c.id); }}
-                                        className="text-slate-400 hover:text-red-600"
+                                        className="text-slate-400 hover:text-red-600 dark:hover:text-red-400"
                                     >
                                         Delete
                                     </button>
@@ -670,7 +688,8 @@ function CommentsSection({ issueKey, projectKey }) {
                                 <textarea
                                     value={editDraft}
                                     onChange={(e) => setEditDraft(e.target.value)}
-                                    className="w-full border border-slate-300 rounded p-2 text-sm mb-2"
+                                    className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded p-2 text-sm mb-2"
+                                    placeholder="Edit comment…"
                                     rows={3}
                                     autoFocus
                                 />
@@ -684,14 +703,16 @@ function CommentsSection({ issueKey, projectKey }) {
                                     <button
                                         type="button"
                                         onClick={() => setEditingId(null)}
-                                        className="px-3 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded"
+                                        className="px-3 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
                                     >
                                         Cancel
                                     </button>
                                 </div>
                             </form>
                         ) : (
-                            <Markdown>{c.body}</Markdown>
+                            <div className="text-sm text-slate-800 dark:text-slate-100 whitespace-pre-wrap break-words leading-relaxed">
+                                {renderCommentBody(c.body)}
+                            </div>
                         )}
                     </div>
                 ))}
@@ -705,7 +726,7 @@ function CommentsSection({ issueKey, projectKey }) {
                     onChange={setDraft}
                     users={memberUsernames}
                     placeholder="Add a comment… (type @ to mention)"
-                    className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded p-2 text-sm"
+                    className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded p-2 text-sm"
                     rows={3}
                 />
                 <button

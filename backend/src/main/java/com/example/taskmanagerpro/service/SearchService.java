@@ -165,8 +165,8 @@ public class SearchService {
     public List<ActivityLog> recentActivity(int limit) {
         List<Long> projectIds = accessibleProjectIds();
         if (projectIds.isEmpty()) return List.of();
-        List<ActivityLog> all = activityRepo.findRecentByProjects(projectIds);
-        return all.size() > limit ? all.subList(0, limit) : all;
+        int safeLimit = Math.max(1, limit);
+        return activityRepo.findRecentByProjects(projectIds, PageRequest.of(0, safeLimit));
     }
 
     @Transactional(readOnly = true)

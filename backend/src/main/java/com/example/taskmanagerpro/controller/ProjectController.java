@@ -3,6 +3,7 @@ package com.example.taskmanagerpro.controller;
 import com.example.taskmanagerpro.dto.AddMemberRequest;
 import com.example.taskmanagerpro.dto.CreateProjectRequest;
 import com.example.taskmanagerpro.dto.ProjectDTO;
+import com.example.taskmanagerpro.dto.ProjectStatusCountProjection;
 import com.example.taskmanagerpro.model.Project;
 import com.example.taskmanagerpro.model.ProjectMembership;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
@@ -12,8 +13,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -29,11 +32,25 @@ public class ProjectController {
 
     @GetMapping
     public List<ProjectDTO> listMine() {
-        return projectService.listForCurrentUser().stream().map(p -> {
+        List<Project> projects = projectService.listForCurrentUser();
+        if (projects.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> projectIds = projects.stream().map(Project::getId).toList();
+        Map<Long, Map<TaskStatus, Long>> statusCountsByProject = taskRepo.countByProjectIdsGroupedByStatus(projectIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        ProjectStatusCountProjection::getProjectId,
+                        Collectors.toMap(ProjectStatusCountProjection::getStatus, ProjectStatusCountProjection::getCount)
+                ));
+
+        return projects.stream().map(p -> {
             ProjectDTO dto = ProjectDTO.from(p);
-            dto.setOpenCount(taskRepo.countByProjectAndStatus(p.getId(), TaskStatus.PENDING));
-            dto.setInProgressCount(taskRepo.countByProjectAndStatus(p.getId(), TaskStatus.IN_PROGRESS));
-            dto.setDoneCount(taskRepo.countByProjectAndStatus(p.getId(), TaskStatus.DONE));
+            Map<TaskStatus, Long> counts = statusCountsByProject.getOrDefault(p.getId(), Collections.emptyMap());
+            dto.setOpenCount(counts.getOrDefault(TaskStatus.PENDING, 0L));
+            dto.setInProgressCount(counts.getOrDefault(TaskStatus.IN_PROGRESS, 0L));
+            dto.setDoneCount(counts.getOrDefault(TaskStatus.DONE, 0L));
             return dto;
         }).toList();
     }

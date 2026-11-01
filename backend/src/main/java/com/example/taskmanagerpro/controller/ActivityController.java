@@ -7,6 +7,7 @@ import com.example.taskmanagerpro.repository.ActivityLogRepository;
 import com.example.taskmanagerpro.service.IssueService;
 import com.example.taskmanagerpro.service.ActivityService;
 import com.example.taskmanagerpro.service.ProjectService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,15 +44,15 @@ public class ActivityController {
         List<Long> projectIds = projectService.listForCurrentUser().stream()
                 .map(p -> p.getId()).toList();
         if (projectIds.isEmpty()) return List.of();
-        return activityLogRepo.findRecentByProjects(projectIds)
-                .stream().limit(50).map(ActivityDTO::from).toList();
+        return activityLogRepo.findRecentByProjects(projectIds, PageRequest.of(0, 50))
+                .stream().map(ActivityDTO::from).toList();
     }
 
     /** Recent activity across entire project (last 100) */
     @GetMapping("/api/projects/{projectKey}/activity")
     public List<ActivityDTO> projectActivity(@PathVariable String projectKey) {
         Project p = projectService.getByKey(projectKey);
-        return activityLogRepo.findRecentByProjects(List.of(p.getId()))
-                .stream().limit(100).map(ActivityDTO::from).toList();
+        return activityLogRepo.findRecentByProjects(List.of(p.getId()), PageRequest.of(0, 100))
+                .stream().map(ActivityDTO::from).toList();
     }
 }

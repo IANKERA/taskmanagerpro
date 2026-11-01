@@ -10,6 +10,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -55,8 +56,8 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public List<Notification> list(int limit) {
         User user = projectService.currentUser();
-        List<Notification> all = notifRepo.findByUserId(user.getId());
-        return all.size() > limit ? all.subList(0, limit) : all;
+        int safeLimit = Math.max(1, limit);
+        return notifRepo.findByUserId(user.getId(), PageRequest.of(0, safeLimit));
     }
 
     @Transactional(readOnly = true)

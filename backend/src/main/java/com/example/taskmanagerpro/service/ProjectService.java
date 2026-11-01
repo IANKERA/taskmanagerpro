@@ -47,13 +47,8 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public List<Project> listForCurrentUser() {
         Long uid = currentUser().getId();
-        // Touch lead inside the tx so ProjectDTO.from can read it after the session closes.
-        return membershipRepo.findByUserId(uid).stream()
-                .map(pm -> {
-                    Project p = pm.getProject();
-                    if (p.getLead() != null) p.getLead().getUsername(); // force init
-                    return p;
-                })
+        return membershipRepo.findByUserIdWithProjectAndLead(uid).stream()
+                .map(ProjectMembership::getProject)
                 .toList();
     }
 
@@ -135,9 +130,7 @@ public class ProjectService {
     public List<ProjectMembership> listMembers(String projectKey) {
         Project p = getByKey(projectKey);
         requireProjectRole(p.getId(), ProjectRole.VIEWER, ProjectRole.MEMBER, ProjectRole.ADMIN);
-        List<ProjectMembership> ms = membershipRepo.findByProjectId(p.getId());
-        ms.forEach(m -> m.getUser().getUsername()); // force lazy user init
-        return ms;
+        return membershipRepo.findByProjectId(p.getId());
     }
 
     @Transactional(readOnly = true)

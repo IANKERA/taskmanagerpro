@@ -13,9 +13,22 @@ public interface ProjectMembershipRepository extends JpaRepository<ProjectMember
 
     Optional<ProjectMembership> findByProjectIdAndUserId(Long projectId, Long userId);
 
-    List<ProjectMembership> findByProjectId(Long projectId);
+    @Query("""
+        SELECT pm FROM ProjectMembership pm
+        JOIN FETCH pm.user
+        WHERE pm.project.id = :projectId
+    """)
+    List<ProjectMembership> findByProjectId(@Param("projectId") Long projectId);
 
     List<ProjectMembership> findByUserId(Long userId);
+
+    @Query("""
+        SELECT pm FROM ProjectMembership pm
+        JOIN FETCH pm.project p
+        LEFT JOIN FETCH p.lead
+        WHERE pm.user.id = :userId
+    """)
+    List<ProjectMembership> findByUserIdWithProjectAndLead(@Param("userId") Long userId);
 
     @Query("""
         SELECT CASE WHEN COUNT(pm) > 0 THEN true ELSE false END

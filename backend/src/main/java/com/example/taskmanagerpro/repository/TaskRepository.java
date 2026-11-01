@@ -11,8 +11,11 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import com.example.taskmanagerpro.dto.ProjectStatusCountProjection;
+import com.example.taskmanagerpro.dto.SprintMetricsProjection;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
@@ -246,4 +249,26 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("SELECT COUNT(t) FROM Task t WHERE t.parent.id = :parentId AND t.status = :status")
     long countByParentIdAndStatus(@Param("parentId") Long parentId, @Param("status") TaskStatus status);
+
+    @Query("""
+        SELECT t.project.id AS projectId, t.status AS status, COUNT(t) AS count
+        FROM Task t
+        WHERE t.project.id IN :projectIds
+        GROUP BY t.project.id, t.status
+    """)
+    List<ProjectStatusCountProjection> countByProjectIdsGroupedByStatus(
+            @Param("projectIds") Collection<Long> projectIds);
+
+    @Query("""
+        SELECT t.sprint.id AS sprintId,
+               COUNT(t) AS issueCount,
+               SUM(CASE WHEN t.status = com.example.taskmanagerpro.model.enums.TaskStatus.DONE THEN 1L ELSE 0L END) AS doneCount,
+               COALESCE(SUM(t.storyPoints), 0) AS totalPoints,
+               COALESCE(SUM(CASE WHEN t.status = com.example.taskmanagerpro.model.enums.TaskStatus.DONE THEN t.storyPoints ELSE 0 END), 0) AS donePoints
+        FROM Task t
+        WHERE t.sprint.id IN :sprintIds
+        GROUP BY t.sprint.id
+    """)
+    List<SprintMetricsProjection> getSprintMetricsGroupedBySprintId(
+            @Param("sprintIds") Collection<Long> sprintIds);
 }

@@ -1,6 +1,7 @@
 package com.example.taskmanagerpro.repository;
 
 import com.example.taskmanagerpro.model.ActivityLog;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,7 +36,7 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
         WHERE t.project.id IN :projectIds
         ORDER BY a.at DESC, a.id DESC
     """)
-    List<ActivityLog> findRecentByProjects(@Param("projectIds") List<Long> projectIds);
+    List<ActivityLog> findRecentByProjects(@Param("projectIds") List<Long> projectIds, Pageable pageable);
 
     @Query("""
         SELECT a FROM ActivityLog a
@@ -44,5 +45,5 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
         LEFT JOIN FETCH t.project
         ORDER BY a.at DESC, a.id DESC
     """)
-    List<ActivityLog> findAllWithRelations();
+    List<ActivityLog> findAllWithRelations(Pageable pageable);
 }

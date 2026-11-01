@@ -662,6 +662,132 @@ class TaskManagerProApplicationTests {
                 .andExpect(jsonPath("$[0].assigneeUsername").value(fixture.username()));
     }
 
+    @Test
+    void listProjectsAppliesGroupedStatusAggregationAndPreservesDtos() throws Exception {
+        ProjectFixture p1 = createProject("ADMIN");
+        String p2Key = "P" + UUID.randomUUID().toString().replace("-", "").substring(0, 7).toUpperCase();
+        long p2Id = jdbcTemplate.queryForObject(
+                "INSERT INTO projects(project_key, name, lead_user_id) VALUES (?, ?, ?) RETURNING id",
+                Long.class, p2Key, "second project", p1.userId());
+        jdbcTemplate.update(
+                "INSERT INTO project_memberships(project_id, user_id, project_role) VALUES (?, ?, ?)",
+                p2Id, p1.userId(), "ADMIN");
+
+        // P1 has 2 PENDING, 1 IN_PROGRESS, 1 DONE
+        long t1 = createTask(p1, "p1-t1", null, p1.userId());
+        long t2 = createTask(p1, "p1-t2", null, p1.userId());
+        long t3 = createTask(p1, "p1-t3", null, p1.userId());
+        long t4 = createTask(p1, "p1-t4", null, p1.userId());
+        jdbcTemplate.update("UPDATE tasks SET status = 'PENDING' WHERE id IN (?, ?)", t1, t2);
+        jdbcTemplate.update("UPDATE tasks SET status = 'IN_PROGRESS' WHERE id = ?", t3);
+        jdbcTemplate.update("UPDATE tasks SET status = 'DONE' WHERE id = ?", t4);
+
+        // P2 has 0 tasks
+
+        String token = jwtService.generateToken(p1.username());
+
+        mockMvc.perform(get("/api/projects").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[?(@.key == '" + p1.projectKey() + "')].openCount").value(2))
+                .andExpect(jsonPath("$[?(@.key == '" + p1.projectKey() + "')].inProgressCount").value(1))
+                .andExpect(jsonPath("$[?(@.key == '" + p1.projectKey() + "')].doneCount").value(1))
+                .andExpect(jsonPath("$[?(@.key == '" + p1.projectKey() + "')].leadUsername").value(p1.username()))
+                .andExpect(jsonPath("$[?(@.key == '" + p2Key + "')].openCount").value(0))
+                .andExpect(jsonPath("$[?(@.key == '" + p2Key + "')].inProgressCount").value(0))
+                .andExpect(jsonPath("$[?(@.key == '" + p2Key + "')].doneCount").value(0));
+    }
+
+    @Test
+    void listSprintsAppliesGroupedMetricsAggregation() throws Exception {
+        ProjectFixture p = createProject("ADMIN");
+        long s1Id = jdbcTemplate.queryForObject(
+                "INSERT INTO sprints(project_id, name, state) VALUES (?, 'Sprint 1', 'ACTIVE') RETURNING id",
+                Long.class, p.projectId());
+        long s2Id = jdbcTemplate.queryForObject(
+                "INSERT INTO sprints(project_id, name, state) VALUES (?, 'Sprint 2 (empty)', 'PLANNED') RETURNING id",
+                Long.class, p.projectId());
+
+        long t1 = createTask(p, "s1-t1", null, p.userId());
+        long t2 = createTask(p, "s1-t2", null, p.userId());
+        long t3 = createTask(p, "s1-t3", null, p.userId());
+        jdbcTemplate.update("UPDATE tasks SET sprint_id = ?, status = 'DONE', story_points = 5 WHERE id = ?", s1Id, t1);
+        jdbcTemplate.update("UPDATE tasks SET sprint_id = ?, status = 'IN_PROGRESS', story_points = 3 WHERE id = ?", s1Id, t2);
+        jdbcTemplate.update("UPDATE tasks SET sprint_id = ?, status = 'PENDING', story_points = NULL WHERE id = ?", s1Id, t3);
+
+        String token = jwtService.generateToken(p.username());
+
+        mockMvc.perform(get("/api/projects/" + p.projectKey() + "/sprints").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[?(@.id == " + s1Id + ")].issueCount").value(3))
+                .andExpect(jsonPath("$[?(@.id == " + s1Id + ")].doneCount").value(1))
+                .andExpect(jsonPath("$[?(@.id == " + s1Id + ")].totalPoints").value(8))
+                .andExpect(jsonPath("$[?(@.id == " + s1Id + ")].donePoints").value(5))
+                .andExpect(jsonPath("$[?(@.id == " + s2Id + ")].issueCount").value(0))
+                .andExpect(jsonPath("$[?(@.id == " + s2Id + ")].doneCount").value(0))
+                .andExpect(jsonPath("$[?(@.id == " + s2Id + ")].totalPoints").value(0))
+                .andExpect(jsonPath("$[?(@.id == " + s2Id + ")].donePoints").value(0));
+    }
+
+    @Test
+    void listProjectMembersEagerlyFetchesUsers() throws Exception {
+        ProjectFixture p = createProject("ADMIN");
+        long u2 = createUser("member");
+        long u3 = createUser("viewer");
+        jdbcTemplate.update("INSERT INTO project_memberships(project_id, user_id, project_role) VALUES (?, ?, 'MEMBER')", p.projectId(), u2);
+        jdbcTemplate.update("INSERT INTO project_memberships(project_id, user_id, project_role) VALUES (?, ?, 'VIEWER')", p.projectId(), u3);
+
+        String token = jwtService.generateToken(p.username());
+
+        mockMvc.perform(get("/api/projects/" + p.projectKey() + "/members").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[?(@.username == '" + username(u2) + "')].projectRole").value("MEMBER"))
+                .andExpect(jsonPath("$[?(@.username == '" + username(u3) + "')].projectRole").value("VIEWER"));
+
+        mockMvc.perform(get("/api/projects/" + p.projectKey() + "/assignable-users").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.username == '" + p.username() + "')]").exists())
+                .andExpect(jsonPath("$[?(@.username == '" + username(u2) + "')]").exists());
+    }
+
+    @Test
+    void activityFeedsAndNotificationsApplyDatabaseLimits() throws Exception {
+        ProjectFixture p = createProject("ADMIN");
+        long t = createTask(p, "act-task", null, p.userId());
+
+        // Insert 5 notifications
+        for (int i = 0; i < 5; i++) {
+            jdbcTemplate.update(
+                    "INSERT INTO notifications(user_id, task_id, type, title, message, issue_key, project_key, is_read, created_at) "
+                            + "VALUES (?, ?, 'TEST', ?, 'msg', ?, ?, false, CURRENT_TIMESTAMP - (? || ' minutes')::interval)",
+                    p.userId(), t, "Notif " + i, p.projectKey() + "-act-task", p.projectKey(), i);
+        }
+
+        String token = jwtService.generateToken(p.username());
+
+        // Request limit=2
+        mockMvc.perform(get("/api/notifications?limit=2").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].title").value("Notif 0"))
+                .andExpect(jsonPath("$[1].title").value("Notif 1"));
+
+        // Activity feed
+        for (int i = 0; i < 5; i++) {
+            jdbcTemplate.update(
+                    "INSERT INTO activity_log(task_id, actor_id, activity_type, field, old_value, new_value, at) "
+                            + "VALUES (?, ?, 'FIELD_CHANGED', 'status', 'PENDING', 'IN_PROGRESS', CURRENT_TIMESTAMP - (? || ' minutes')::interval)",
+                    t, p.userId(), i);
+        }
+
+        mockMvc.perform(get("/api/activity/feed").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+    }
+
     private void assertTimestampColumn(String columnName) {
         var column = jdbcTemplate.queryForMap(
                 "SELECT data_type, is_nullable, column_default FROM information_schema.columns "

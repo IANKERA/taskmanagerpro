@@ -7,6 +7,7 @@ import com.example.taskmanagerpro.model.Task;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
 import com.example.taskmanagerpro.service.SearchService;
 import com.example.taskmanagerpro.repository.ActivityLogRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -123,8 +124,8 @@ public class SearchController {
     @GetMapping("/admin/audit-log")
     @PreAuthorize("hasRole('ADMIN')")
     public List<Map<String, Object>> auditLog(@RequestParam(defaultValue = "200") int limit) {
-        return activityLogRepository.findAllWithRelations().stream()
-                .limit(Math.min(limit, 500))
+        int safeLimit = Math.min(Math.max(1, limit), 500);
+        return activityLogRepository.findAllWithRelations(PageRequest.of(0, safeLimit)).stream()
                 .map(a -> {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("id", a.getId());

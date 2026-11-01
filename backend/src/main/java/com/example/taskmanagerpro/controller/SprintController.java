@@ -2,7 +2,9 @@ package com.example.taskmanagerpro.controller;
 
 import com.example.taskmanagerpro.dto.CreateSprintRequest;
 import com.example.taskmanagerpro.dto.SprintDTO;
+import com.example.taskmanagerpro.dto.SprintMetricsProjection;
 import com.example.taskmanagerpro.dto.UpdateSprintRequest;
+import com.example.taskmanagerpro.model.Sprint;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
 import com.example.taskmanagerpro.repository.TaskRepository;
 import com.example.taskmanagerpro.service.BurndownService;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RestController
 public class SprintController {
@@ -30,12 +34,23 @@ public class SprintController {
 
     @GetMapping("/api/projects/{projectKey}/sprints")
     public List<SprintDTO> list(@PathVariable String projectKey) {
-        return sprintService.listForProject(projectKey).stream().map(s -> {
+        List<Sprint> sprints = sprintService.listForProject(projectKey);
+        if (sprints.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> sprintIds = sprints.stream().map(Sprint::getId).toList();
+        Map<Long, SprintMetricsProjection> metricsMap = taskRepo.getSprintMetricsGroupedBySprintId(sprintIds)
+                .stream()
+                .collect(Collectors.toMap(SprintMetricsProjection::getSprintId, Function.identity()));
+
+        return sprints.stream().map(s -> {
             SprintDTO dto = SprintDTO.from(s);
-            dto.setIssueCount(taskRepo.countBySprintId(s.getId()));
-            dto.setDoneCount(taskRepo.countBySprintIdAndStatus(s.getId(), TaskStatus.DONE));
-            dto.setTotalPoints(taskRepo.sumPointsBySprintId(s.getId()));
-            dto.setDonePoints(taskRepo.sumPointsBySprintIdAndStatus(s.getId(), TaskStatus.DONE));
+            SprintMetricsProjection m = metricsMap.get(s.getId());
+            dto.setIssueCount(m != null && m.getIssueCount() != null ? m.getIssueCount() : 0L);
+            dto.setDoneCount(m != null && m.getDoneCount() != null ? m.getDoneCount() : 0L);
+            dto.setTotalPoints(m != null && m.getTotalPoints() != null ? m.getTotalPoints().intValue() : 0);
+            dto.setDonePoints(m != null && m.getDonePoints() != null ? m.getDonePoints().intValue() : 0);
             return dto;
         }).toList();
     }

@@ -225,4 +225,20 @@ class SearchServicePerformanceTests {
         assertEquals(1L, results.get(1).getId());
         assertEquals(2L, results.get(2).getId());
     }
+
+    @Test
+    void recentActivityAppliesDatabaseLimitAndAvoidsLoadingAllRecords() {
+        List<Long> pids = List.of(1L, 2L);
+        mockAccessibleProjects(pids);
+
+        com.example.taskmanagerpro.model.ActivityLog a1 = com.example.taskmanagerpro.model.ActivityLog.builder().id(101L).build();
+        com.example.taskmanagerpro.model.ActivityLog a2 = com.example.taskmanagerpro.model.ActivityLog.builder().id(102L).build();
+        when(activityRepo.findRecentByProjects(pids, PageRequest.of(0, 25)))
+                .thenReturn(List.of(a1, a2));
+
+        List<com.example.taskmanagerpro.model.ActivityLog> result = searchService.recentActivity(25);
+
+        assertEquals(2, result.size());
+        verify(activityRepo, times(1)).findRecentByProjects(pids, PageRequest.of(0, 25));
+    }
 }

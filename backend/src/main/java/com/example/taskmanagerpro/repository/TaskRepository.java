@@ -11,11 +11,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import com.example.taskmanagerpro.dto.EpicChildCountProjection;
 import com.example.taskmanagerpro.dto.ProjectStatusCountProjection;
 import com.example.taskmanagerpro.dto.SprintMetricsProjection;
+import com.example.taskmanagerpro.dto.TaskCfdProjection;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
@@ -271,4 +274,46 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     """)
     List<SprintMetricsProjection> getSprintMetricsGroupedBySprintId(
             @Param("sprintIds") Collection<Long> sprintIds);
+
+    @Query("SELECT t.id FROM Task t WHERE t.sprint.id = :sprintId ORDER BY t.id")
+    List<Long> findTaskIdsBySprintId(@Param("sprintId") Long sprintId);
+
+    @Query("""
+        SELECT t.id AS id, t.createdAt AS createdAt
+        FROM Task t
+        WHERE t.project.id = :projectId
+        ORDER BY t.id
+    """)
+    List<TaskCfdProjection> findCfdProjectionsByProjectId(@Param("projectId") Long projectId);
+
+    @Query("""
+        SELECT DISTINCT t FROM Task t
+        LEFT JOIN FETCH t.assignee
+        LEFT JOIN FETCH t.sprint
+        WHERE t.project.id = :projectId
+        ORDER BY t.id
+    """)
+    List<Task> findByProjectIdForAnalytics(@Param("projectId") Long projectId);
+
+    @Query("""
+        SELECT t FROM Task t
+        JOIN FETCH t.assignee
+        JOIN FETCH t.project
+        WHERE t.dueDate IS NOT NULL
+          AND t.dueDate < :cutoff
+          AND t.status <> com.example.taskmanagerpro.model.enums.TaskStatus.DONE
+          AND t.assignee IS NOT NULL
+        ORDER BY t.dueDate ASC, t.id ASC
+    """)
+    List<Task> findTasksEligibleForDueDateReminder(@Param("cutoff") LocalDateTime cutoff);
+
+    @Query("""
+        SELECT t.parent.id AS parentId,
+               COUNT(t) AS childCount,
+               SUM(CASE WHEN t.status = com.example.taskmanagerpro.model.enums.TaskStatus.DONE THEN 1L ELSE 0L END) AS childDoneCount
+        FROM Task t
+        WHERE t.parent.id IN :parentIds
+        GROUP BY t.parent.id
+    """)
+    List<EpicChildCountProjection> countChildrenGroupedByParentId(@Param("parentIds") Collection<Long> parentIds);
 }

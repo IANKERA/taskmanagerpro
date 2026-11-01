@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> {
@@ -17,6 +18,15 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
         ORDER BY a.at ASC, a.id ASC
     """)
     List<ActivityLog> findByTaskIdWithActor(@Param("taskId") Long taskId);
+
+    @Query("""
+        SELECT a FROM ActivityLog a
+        JOIN FETCH a.task
+        WHERE a.task.id IN :taskIds
+          AND (a.field = 'status' OR a.activityType = com.example.taskmanagerpro.model.enums.ActivityType.CREATED)
+        ORDER BY a.at ASC, a.id ASC
+    """)
+    List<ActivityLog> findStatusChangesByTaskIds(@Param("taskIds") Collection<Long> taskIds);
 
     @Query("""
         SELECT a FROM ActivityLog a

@@ -1,5 +1,6 @@
 package com.example.taskmanagerpro.controller;
 
+import com.example.taskmanagerpro.dto.TaskCfdProjection;
 import com.example.taskmanagerpro.model.ActivityLog;
 import com.example.taskmanagerpro.model.Project;
 import com.example.taskmanagerpro.model.Task;
@@ -39,26 +40,33 @@ class AnalyticsControllerPerformanceTests {
 
     @InjectMocks private AnalyticsController analyticsController;
 
+    private record SimpleTaskCfdProjection(Long id, LocalDateTime createdAt) implements TaskCfdProjection {
+        @Override public Long getId() { return id; }
+        @Override public LocalDateTime getCreatedAt() { return createdAt; }
+    }
+
     @Test
     void cfdRetrievesActivitiesInASingleBatchQueryInsteadOfPerTaskLoop() {
         Project project = Project.builder().id(10L).key("CFD").build();
         when(projectService.getByKey("CFD")).thenReturn(project);
 
         LocalDateTime baseTime = LocalDateTime.now().minusDays(5);
-        Task t1 = Task.builder().id(1L).project(project).createdAt(baseTime).build();
-        Task t2 = Task.builder().id(2L).project(project).createdAt(baseTime).build();
-        Task t3 = Task.builder().id(3L).project(project).createdAt(baseTime).build();
-        when(taskRepo.findByProjectIdWithRelations(10L)).thenReturn(List.of(t1, t2, t3));
+        TaskCfdProjection t1 = new SimpleTaskCfdProjection(1L, baseTime);
+        TaskCfdProjection t2 = new SimpleTaskCfdProjection(2L, baseTime);
+        TaskCfdProjection t3 = new SimpleTaskCfdProjection(3L, baseTime);
+        when(taskRepo.findCfdProjectionsByProjectId(10L)).thenReturn(List.of(t1, t2, t3));
 
+        Task task1 = Task.builder().id(1L).project(project).createdAt(baseTime).build();
+        Task task2 = Task.builder().id(2L).project(project).createdAt(baseTime).build();
         ActivityLog log1 = ActivityLog.builder()
-                .task(t1)
+                .task(task1)
                 .activityType(ActivityType.FIELD_CHANGED)
                 .field("status")
                 .newValue("IN_PROGRESS")
                 .at(baseTime.plusDays(1))
                 .build();
         ActivityLog log2 = ActivityLog.builder()
-                .task(t2)
+                .task(task2)
                 .activityType(ActivityType.FIELD_CHANGED)
                 .field("status")
                 .newValue("DONE")
@@ -69,6 +77,8 @@ class AnalyticsControllerPerformanceTests {
         List<Map<String, Object>> result = analyticsController.cumulativeFlowDiagram("CFD", 7);
 
         // Assert query count efficiency: exactly 1 batch query, never loop over individual tasks
+        verify(taskRepo, times(1)).findCfdProjectionsByProjectId(10L);
+        verify(taskRepo, never()).findByProjectIdWithRelations(any());
         verify(activityLogRepo, times(1)).findStatusChangesByProjectId(10L);
         verify(activityLogRepo, never()).findByTaskIdWithActor(any());
 
@@ -84,13 +94,28 @@ class AnalyticsControllerPerformanceTests {
     void cfdSkipsActivityQueryWhenProjectHasNoTasks() {
         Project project = Project.builder().id(10L).key("EMPTY").build();
         when(projectService.getByKey("EMPTY")).thenReturn(project);
-        when(taskRepo.findByProjectIdWithRelations(10L)).thenReturn(List.of());
+        when(taskRepo.findCfdProjectionsByProjectId(10L)).thenReturn(List.of());
 
         List<Map<String, Object>> result = analyticsController.cumulativeFlowDiagram("EMPTY", 5);
 
         assertFalse(result.isEmpty());
+        verify(taskRepo, times(1)).findCfdProjectionsByProjectId(10L);
         verify(activityLogRepo, never()).findStatusChangesByProjectId(any());
         verify(activityLogRepo, never()).findByTaskIdWithActor(any());
+    }
+
+    @Test
+    void getAnalyticsUsesDedicatedQueryWithoutCollectionJoins() {
+        Project project = Project.builder().id(10L).key("ANALYTICS").build();
+        when(projectService.getByKey("ANALYTICS")).thenReturn(project);
+        when(taskRepo.findByProjectIdForAnalytics(10L)).thenReturn(List.of());
+        when(sprintRepo.findByProjectIdOrderByCreatedAtDesc(10L)).thenReturn(List.of());
+
+        AnalyticsController.AnalyticsResponse response = analyticsController.getAnalytics("ANALYTICS");
+
+        verify(taskRepo, times(1)).findByProjectIdForAnalytics(10L);
+        verify(taskRepo, never()).findByProjectIdWithRelations(any());
+        assertEquals(0, response.getTotalIssues());
     }
 
     @Test

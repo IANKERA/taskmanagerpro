@@ -64,24 +64,13 @@ public class BurndownService {
         LocalDate dataEnd = end.isAfter(today) ? today : end;
 
         // All tasks currently in the sprint
-        List<Task> tasks = taskRepo.findBySprintIdWithRelations(sprintId);
-        int totalScope = tasks.size();
-        Set<Long> taskIds = new HashSet<>();
-        for (Task t : tasks) taskIds.add(t.getId());
+        List<Long> taskIds = taskRepo.findTaskIdsBySprintId(sprintId);
+        int totalScope = taskIds.size();
 
-        // Gather all status-change activity logs for these tasks
-        // We'll query per-task to reuse the existing repo method
-        List<ActivityLog> statusChanges = new ArrayList<>();
-        for (Long taskId : taskIds) {
-            List<ActivityLog> logs = activityRepo.findByTaskIdWithActor(taskId);
-            for (ActivityLog log : logs) {
-                if ("status".equals(log.getField()) || log.getActivityType().name().equals("CREATED")) {
-                    statusChanges.add(log);
-                }
-            }
-        }
-        // Sort by time
-        statusChanges.sort(Comparator.comparing(ActivityLog::getAt));
+        // Gather all status-change activity logs for these tasks in a single batch query
+        List<ActivityLog> statusChanges = taskIds.isEmpty()
+                ? Collections.emptyList()
+                : activityRepo.findStatusChangesByTaskIds(taskIds);
 
         // Build a day-by-day remaining count
         // Start: on day 0, remaining = total (assume all are "not done" at sprint start)
@@ -92,13 +81,12 @@ public class BurndownService {
 
         // Initial done count at sprint start
         int doneAtStart = 0;
-        for (Task t : tasks) {
+        for (Long taskId : taskIds) {
             // Check if task was already DONE at sprint start by checking if
             // latest status change before sprint start set it to DONE
             boolean wasDone = false;
             for (ActivityLog log : statusChanges) {
-                if (!taskIds.contains(log.getTask().getId())) continue;
-                if (log.getTask().getId().equals(t.getId()) && log.getAt().isBefore(sprintStart)) {
+                if (log.getTask() != null && taskId.equals(log.getTask().getId()) && log.getAt().isBefore(sprintStart)) {
                     if ("status".equals(log.getField())) {
                         wasDone = "DONE".equals(log.getNewValue());
                     }
@@ -110,7 +98,6 @@ public class BurndownService {
         // Build daily deltas map: date -> net change in done count
         Map<LocalDate, Integer> dailyDelta = new TreeMap<>();
         for (ActivityLog log : statusChanges) {
-            if (!taskIds.contains(log.getTask().getId())) continue;
             if (!"status".equals(log.getField())) continue;
             LocalDate day = log.getAt().toLocalDate();
             if (day.isBefore(start)) continue;

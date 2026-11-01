@@ -27,6 +27,7 @@ import com.example.taskmanagerpro.security.JwtService;
 import com.example.taskmanagerpro.service.AttachmentService;
 import com.example.taskmanagerpro.service.AttachmentCleanupService;
 import com.example.taskmanagerpro.service.CommentService;
+import com.example.taskmanagerpro.service.DueDateReminder;
 import com.example.taskmanagerpro.service.IssueService;
 import com.example.taskmanagerpro.service.ProjectService;
 import com.example.taskmanagerpro.service.SearchService;
@@ -81,6 +82,7 @@ class TaskManagerProApplicationTests {
     @Autowired private AttachmentService attachmentService;
     @Autowired private AttachmentCleanupService attachmentCleanupService;
     @Autowired private JwtService jwtService;
+    @Autowired private DueDateReminder dueDateReminder;
 
     @DynamicPropertySource
     static void configureDatabase(DynamicPropertyRegistry registry) {
@@ -786,6 +788,78 @@ class TaskManagerProApplicationTests {
         mockMvc.perform(get("/api/activity/feed").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    void burndownEndpointReturnsSeriesUsingBatchQueries() throws Exception {
+        ProjectFixture p = createProject("ADMIN");
+        long sprintId = jdbcTemplate.queryForObject(
+                "INSERT INTO sprints(project_id, name, state, start_date, end_date) " +
+                "VALUES (?, 'Burndown Sprint', 'ACTIVE', CURRENT_DATE - INTERVAL '3 days', CURRENT_DATE + INTERVAL '4 days') RETURNING id",
+                Long.class, p.projectId());
+
+        long t1 = createTask(p, "bd-task-1", null, p.userId());
+        long t2 = createTask(p, "bd-task-2", null, p.userId());
+        jdbcTemplate.update("UPDATE tasks SET sprint_id = ? WHERE id IN (?, ?)", sprintId, t1, t2);
+
+        jdbcTemplate.update("""
+            INSERT INTO activity_log(task_id, actor_id, activity_type, field, old_value, new_value, at)
+            VALUES (?, ?, 'FIELD_CHANGED', 'status', 'PENDING', 'DONE', CURRENT_TIMESTAMP - INTERVAL '1 day')
+        """, t1, p.userId());
+
+        String token = jwtService.generateToken(p.username());
+
+        mockMvc.perform(get("/api/sprints/" + sprintId + "/burndown").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[-1].total").value(2))
+                .andExpect(jsonPath("$[-1].done").value(1))
+                .andExpect(jsonPath("$[-1].remaining").value(1));
+
+        ProjectFixture outsider = createProject("ADMIN");
+        String outsiderToken = jwtService.generateToken(outsider.username());
+        mockMvc.perform(get("/api/sprints/" + sprintId + "/burndown").header("Authorization", "Bearer " + outsiderToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void epicChildCountsEnrichedViaGroupedAggregation() throws Exception {
+        ProjectFixture p = createProject("ADMIN");
+        long epicId = createTask(p, "epic-1", null, p.userId());
+        jdbcTemplate.update("UPDATE tasks SET issue_type = 'EPIC' WHERE id = ?", epicId);
+
+        long c1 = createTask(p, "child-1", null, p.userId());
+        long c2 = createTask(p, "child-2", null, p.userId());
+        jdbcTemplate.update("UPDATE tasks SET parent_id = ?, status = 'DONE' WHERE id = ?", epicId, c1);
+        jdbcTemplate.update("UPDATE tasks SET parent_id = ?, status = 'PENDING' WHERE id = ?", epicId, c2);
+
+        String token = jwtService.generateToken(p.username());
+
+        mockMvc.perform(get("/api/projects/" + p.projectKey() + "/issues").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[?(@.id == " + epicId + ")].childCount").value(2))
+                .andExpect(jsonPath("$[?(@.id == " + epicId + ")].childDoneCount").value(1));
+    }
+
+    @Test
+    void dueDateReminderFindsEligibleTasksWithoutFullScan() {
+        ProjectFixture p = createProject("ADMIN");
+        long t = createTask(p, "due-task", null, p.userId());
+        jdbcTemplate.update(
+                "UPDATE tasks SET due_date = CURRENT_TIMESTAMP + INTERVAL '12 hours', status = 'IN_PROGRESS' WHERE id = ?",
+                t);
+
+        int countBefore = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM notifications WHERE task_id = ? AND type = 'DUE_DATE'",
+                Integer.class, t);
+
+        dueDateReminder.checkDueDates();
+
+        int countAfter = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM notifications WHERE task_id = ? AND type = 'DUE_DATE'",
+                Integer.class, t);
+        assertTrue(countAfter > countBefore);
     }
 
     private void assertTimestampColumn(String columnName) {

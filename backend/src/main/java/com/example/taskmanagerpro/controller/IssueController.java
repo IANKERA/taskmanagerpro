@@ -3,6 +3,7 @@ package com.example.taskmanagerpro.controller;
 import com.example.taskmanagerpro.dto.*;
 import com.example.taskmanagerpro.model.IssueLink;
 import com.example.taskmanagerpro.model.TimeLog;
+import com.example.taskmanagerpro.model.enums.IssueType;
 import com.example.taskmanagerpro.model.enums.TaskStatus;
 import com.example.taskmanagerpro.repository.TaskRepository;
 import com.example.taskmanagerpro.repository.TimeLogRepository;
@@ -17,6 +18,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Jira-shaped API. Use the issueKey ("DEMO-7") rather than the numeric id, which
@@ -40,11 +44,23 @@ public class IssueController {
     @GetMapping("/api/projects/{projectKey}/issues")
     public List<TaskDTO> listForProject(@PathVariable String projectKey) {
         List<TaskDTO> dtos = Mapper.toTaskDTOList(issueService.listForProject(projectKey));
-        // Enrich EPICs with child counts
-        for (TaskDTO dto : dtos) {
-            if ("EPIC".equals(dto.getIssueType() != null ? dto.getIssueType().name() : "")) {
-                dto.setChildCount((int) taskRepo.countByParentId(dto.getId()));
-                dto.setChildDoneCount((int) taskRepo.countByParentIdAndStatus(dto.getId(), TaskStatus.DONE));
+        // Enrich EPICs with child counts in a single batch aggregation
+        List<Long> epicIds = dtos.stream()
+                .filter(dto -> dto.getIssueType() == IssueType.EPIC)
+                .map(TaskDTO::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (!epicIds.isEmpty()) {
+            Map<Long, EpicChildCountProjection> countsByParent = taskRepo.countChildrenGroupedByParentId(epicIds).stream()
+                    .collect(Collectors.toMap(EpicChildCountProjection::getParentId, p -> p));
+
+            for (TaskDTO dto : dtos) {
+                if (dto.getIssueType() == IssueType.EPIC) {
+                    EpicChildCountProjection p = countsByParent.get(dto.getId());
+                    dto.setChildCount(p != null && p.getChildCount() != null ? p.getChildCount().intValue() : 0);
+                    dto.setChildDoneCount(p != null && p.getChildDoneCount() != null ? p.getChildDoneCount().intValue() : 0);
+                }
             }
         }
         return dtos;

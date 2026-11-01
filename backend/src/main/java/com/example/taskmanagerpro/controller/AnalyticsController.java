@@ -1,5 +1,6 @@
 package com.example.taskmanagerpro.controller;
 
+import com.example.taskmanagerpro.dto.TaskCfdProjection;
 import com.example.taskmanagerpro.model.ActivityLog;
 import com.example.taskmanagerpro.model.Project;
 import com.example.taskmanagerpro.model.Task;
@@ -37,7 +38,7 @@ public class AnalyticsController {
     @GetMapping
     public AnalyticsResponse getAnalytics(@PathVariable String projectKey) {
         Project p = projectService.getByKey(projectKey);
-        List<Task> issues = taskRepo.findByProjectIdWithRelations(p.getId());
+        List<Task> issues = taskRepo.findByProjectIdForAnalytics(p.getId());
 
         AnalyticsResponse r = new AnalyticsResponse();
 
@@ -180,19 +181,16 @@ public class AnalyticsController {
     public List<Map<String, Object>> cumulativeFlowDiagram(@PathVariable String projectKey,
                                                             @RequestParam(defaultValue = "30") int days) {
         Project p = projectService.getByKey(projectKey);
-        List<Task> issues = taskRepo.findByProjectIdWithRelations(p.getId());
+        List<TaskCfdProjection> issues = taskRepo.findCfdProjectionsByProjectId(p.getId());
 
         // For each day in range, count issues per status by replaying events
         // Simple approach: for each day, count issues that existed and determine their status on that day
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusDays(Math.min(days, 90));
 
-        // Get all activities for this project's tasks
-        List<Long> taskIds = issues.stream().map(Task::getId).toList();
-
         // Build a map of task -> list of status changes (date -> newStatus)
         Map<Long, TreeMap<LocalDate, String>> statusHistory = new HashMap<>();
-        for (Task t : issues) {
+        for (TaskCfdProjection t : issues) {
             TreeMap<LocalDate, String> hist = new TreeMap<>();
             // Initial status at creation
             LocalDate created = t.getCreatedAt() != null ? t.getCreatedAt().toLocalDate() : start;
@@ -215,7 +213,7 @@ public class AnalyticsController {
         List<Map<String, Object>> result = new ArrayList<>();
         for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
             int pending = 0, inProgress = 0, done = 0;
-            for (Task t : issues) {
+            for (TaskCfdProjection t : issues) {
                 LocalDate created = t.getCreatedAt() != null ? t.getCreatedAt().toLocalDate() : start;
                 if (created.isAfter(day)) continue; // issue didn't exist yet
 

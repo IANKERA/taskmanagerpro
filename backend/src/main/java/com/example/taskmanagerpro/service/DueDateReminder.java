@@ -31,18 +31,13 @@ public class DueDateReminder {
     @Transactional
     public void checkDueDates() {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime tomorrow = now.plusDays(1);
         LocalDateTime dayAfter = now.plusDays(2);
 
         // Find tasks due within 2 days that are not done
-        List<Task> allTasks = taskRepo.findAll();
+        List<Task> eligibleTasks = taskRepo.findTasksEligibleForDueDateReminder(dayAfter);
         int reminded = 0;
 
-        for (Task t : allTasks) {
-            if (t.getDueDate() == null) continue;
-            if (t.getStatus() == TaskStatus.DONE) continue;
-            if (t.getAssignee() == null) continue;
-
+        for (Task t : eligibleTasks) {
             LocalDateTime due = t.getDueDate();
 
             // Overdue

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import ProjectAdmin from "./ProjectAdmin";
@@ -11,13 +11,14 @@ vi.mock("../../api/projects", () => ({
     updateProject: vi.fn(),
     archiveProject: vi.fn(),
     unarchiveProject: vi.fn(),
+    deleteProject: vi.fn(),
 }));
 
 vi.mock("../../api/admin", () => ({
     fetchAdminUsers: vi.fn().mockResolvedValue([]),
 }));
 
-import { listProjects, listMembers } from "../../api/projects";
+import { listProjects, listMembers, deleteProject } from "../../api/projects";
 
 function renderProjectAdmin() {
     const qc = new QueryClient({
@@ -108,6 +109,42 @@ describe("ProjectAdmin", () => {
         // Non-lead member should have an enabled remove button
         const removeDevBtn = screen.getByRole("button", { name: "Remove member devBob" });
         expect(removeDevBtn).not.toBeDisabled();
+    });
+
+    it("opens delete project confirmation modal and allows deletion", async () => {
+        listProjects.mockResolvedValue([
+            {
+                id: 1,
+                key: "ALPHA",
+                name: "Alpha Workspace",
+                leadUsername: "leadAlice",
+                archived: false,
+            },
+        ]);
+        deleteProject.mockResolvedValue({});
+
+        renderProjectAdmin();
+
+        expect(await screen.findByText("ALPHA")).toBeInTheDocument();
+
+        // Click Delete button in table
+        const deleteRowBtn = screen.getByRole("button", { name: "Delete" });
+        fireEvent.click(deleteRowBtn);
+
+        // DeleteProjectModal should open
+        expect(screen.getByText("Delete Project")).toBeInTheDocument();
+        const deletePermanentlyBtn = screen.getByRole("button", { name: /delete permanently/i });
+        expect(deletePermanentlyBtn).toBeDisabled();
+
+        // Type project key
+        const input = screen.getByPlaceholderText("ALPHA");
+        fireEvent.change(input, { target: { value: "ALPHA" } });
+        expect(deletePermanentlyBtn).not.toBeDisabled();
+
+        fireEvent.click(deletePermanentlyBtn);
+        await waitFor(() => {
+            expect(deleteProject).toHaveBeenCalledWith("ALPHA");
+        });
     });
 });
 

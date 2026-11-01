@@ -242,21 +242,21 @@ export default function IssueModal() {
                                     {!showMove ? (
                                         <button
                                             onClick={() => setShowMove(true)}
-                                            className="w-full px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700"
+                                            className="w-full px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                                         >
                                             Move to project
                                         </button>
                                     ) : (
-                                        <form onSubmit={(e) => { e.preventDefault(); if (moveTarget.trim()) moveMut.mutate(moveTarget.trim().toUpperCase()); }} className="flex gap-1">
+                                        <form onSubmit={(e) => { e.preventDefault(); if (moveTarget.trim()) moveMut.mutate(moveTarget.trim().toUpperCase()); }} className="flex gap-1.5">
                                             <input
                                                 autoFocus
                                                 placeholder="Project key"
                                                 value={moveTarget}
                                                 onChange={(e) => setMoveTarget(e.target.value.toUpperCase())}
-                                                className="flex-1 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1 text-xs font-mono"
+                                                className="flex-1 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2.5 py-1 text-xs font-mono"
                                             />
-                                            <button disabled={moveMut.isPending} className="px-2 py-1 bg-slate-900 dark:bg-slate-600 text-white text-xs rounded">Go</button>
-                                            <button type="button" onClick={() => setShowMove(false)} className="px-2 py-1 text-xs text-slate-500">✕</button>
+                                            <button disabled={moveMut.isPending} className="px-2.5 py-1 bg-slate-900 dark:bg-blue-600 text-white text-xs font-medium rounded hover:bg-slate-800 dark:hover:bg-blue-700">Go</button>
+                                            <button type="button" onClick={() => setShowMove(false)} className="px-2 py-1 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">✕</button>
                                         </form>
                                     )}
                                     <button
@@ -356,13 +356,13 @@ function EditableDescription({ issue, onSave }) {
                     <div className="flex gap-2 mt-1">
                         <button
                             onClick={() => { setEditing(false); if (val !== (issue.description || "")) onSave(val); }}
-                            className="px-3 py-1 bg-slate-900 dark:bg-slate-600 text-white text-xs rounded hover:bg-slate-800 dark:hover:bg-slate-500"
+                            className="px-3 py-1 bg-slate-900 dark:bg-blue-600 text-white text-xs font-medium rounded hover:bg-slate-800 dark:hover:bg-blue-700 transition-colors"
                         >
                             Save
                         </button>
                         <button
                             onClick={() => { setVal(issue.description || ""); setEditing(false); }}
-                            className="px-3 py-1 bg-slate-100 text-slate-700 text-xs rounded hover:bg-slate-200"
+                            className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                         >
                             Cancel
                         </button>
@@ -371,9 +371,9 @@ function EditableDescription({ issue, onSave }) {
             ) : (
                 <div
                     onClick={() => setEditing(true)}
-                    className="text-sm text-slate-700 dark:text-slate-300 cursor-text hover:bg-slate-50 dark:hover:bg-slate-700 -mx-2 px-2 py-2 rounded min-h-[3em]"
+                    className="text-sm text-slate-700 dark:text-slate-300 cursor-text hover:bg-slate-50 dark:hover:bg-slate-700/60 -mx-2 px-2 py-2 rounded min-h-[3em] transition-colors"
                 >
-                    {issue.description ? <Markdown>{issue.description}</Markdown> : <span className="text-slate-400">Add a description…</span>}
+                    {issue.description ? <Markdown>{issue.description}</Markdown> : <span className="text-slate-400 dark:text-slate-500 italic">Add a description…</span>}
                 </div>
             )}
         </div>
@@ -498,7 +498,7 @@ function SubtasksSection({ issueKey, projectKey }) {
                         <select
                             value={issueType}
                             onChange={(e) => setIssueType(e.target.value)}
-                            className="rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-2 py-1.5 text-xs"
+                            className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 px-2 py-1.5 text-xs"
                         >
                             {["TASK", "BUG", "STORY"].map((t) => (
                                 <option key={t} value={t}>{t}</option>
@@ -508,7 +508,7 @@ function SubtasksSection({ issueKey, projectKey }) {
                         <select
                             value={priority}
                             onChange={(e) => setPriority(e.target.value)}
-                            className="rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 px-2 py-1.5 text-xs"
+                            className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 px-2 py-1.5 text-xs"
                         >
                             {["LOW", "MEDIUM", "HIGH"].map((p) => (
                                 <option key={p} value={p}>{p}</option>
@@ -530,7 +530,7 @@ function SubtasksSection({ issueKey, projectKey }) {
                                 setTitle("");
                                 setError("");
                             }}
-                            className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+                            className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
                         >
                             Cancel
                         </button>
@@ -550,28 +550,43 @@ function SubtasksSection({ issueKey, projectKey }) {
                     No subtasks yet.
                 </div>
             ) : (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                     {children.map((c) => (
                         <div
                             key={c.id}
-                            className="group flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50 text-sm"
+                            className="group flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 p-2 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
                         >
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/projects/${projectKey}/board/${c.issueKey}`)}
-                                className="flex items-center gap-2 min-w-0 flex-1 text-left"
-                            >
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[c.status] || "bg-slate-400"}`} />
-                                <span className="font-mono text-xs text-slate-500 dark:text-slate-400 shrink-0">{c.issueKey}</span>
-                                <span className="truncate text-slate-800 dark:text-slate-200">{c.title}</span>
-                            </button>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs text-slate-400 dark:text-slate-500">{c.assigneeUsername || "Unassigned"}</span>
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span
+                                    className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[c.status] || "bg-slate-400"}`}
+                                    title={`Status: ${c.status || "PENDING"}`}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/projects/${projectKey}/board/${c.issueKey}`)}
+                                    className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+                                >
+                                    {c.issueKey}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/projects/${projectKey}/board/${c.issueKey}`)}
+                                    className="text-left truncate text-sm font-medium text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex-1"
+                                    title={c.title}
+                                >
+                                    {c.title}
+                                </button>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-4 sm:pl-0">
+                                <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full shrink-0">
+                                    <span className="text-[10px] text-slate-400" aria-hidden="true">👤</span>
+                                    <span className="truncate max-w-[120px]">{c.assigneeUsername || "Unassigned"}</span>
+                                </span>
                                 <button
                                     type="button"
                                     onClick={() => unlinkMut.mutate(c.issueKey)}
                                     title="Unlink subtask from parent"
-                                    className="opacity-0 group-hover:opacity-100 rounded p-0.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 text-xs transition-opacity"
+                                    className="opacity-70 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 rounded p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 text-xs transition-all"
                                     aria-label={`Unlink subtask ${c.issueKey}`}
                                 >
                                     ✕
@@ -629,12 +644,12 @@ function LinksSection({ issueKey, projectKey }) {
     return (
         <div>
             <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Links ({links.length})
                 </div>
                 <button
                     onClick={() => setAdding((v) => !v)}
-                    className="text-xs text-slate-500 hover:text-slate-900"
+                    className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                 >
                     {adding ? "Cancel" : "+ Link"}
                 </button>
@@ -648,7 +663,7 @@ function LinksSection({ issueKey, projectKey }) {
                     <select
                         value={form.linkType}
                         onChange={(e) => setForm({ ...form, linkType: e.target.value })}
-                        className="border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1 text-xs"
+                        className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded px-2 py-1 text-xs"
                     >
                         {LINK_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
@@ -657,11 +672,11 @@ function LinksSection({ issueKey, projectKey }) {
                         placeholder="Issue key (e.g. DEMO-3)"
                         value={form.targetIssueKey}
                         onChange={(e) => setForm({ ...form, targetIssueKey: e.target.value.toUpperCase() })}
-                        className="border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1 text-xs flex-1"
+                        className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded px-2.5 py-1 text-xs flex-1"
                     />
                     <button
                         disabled={addMut.isPending}
-                        className="px-2 py-1 bg-slate-900 text-white text-xs rounded hover:bg-slate-800 disabled:opacity-50"
+                        className="px-2.5 py-1 bg-slate-900 dark:bg-blue-600 text-white text-xs font-medium rounded hover:bg-slate-800 dark:hover:bg-blue-700 disabled:opacity-50 transition-colors"
                     >
                         Add
                     </button>
@@ -671,19 +686,20 @@ function LinksSection({ issueKey, projectKey }) {
             {links.length > 0 && (
                 <div className="space-y-1">
                     {links.map((l) => (
-                        <div key={l.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-700 text-sm group">
+                        <div key={l.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-700/60 text-sm group transition-colors">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${LINK_STATUS_DOT[l.status] || "bg-slate-400"}`} />
-                            <span className="text-xs text-slate-500 italic shrink-0">{l.linkLabel}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 italic shrink-0">{l.linkLabel}</span>
                             <button
                                 onClick={() => navigate(`/projects/${projectKey}/board/${l.issueKey}`)}
-                                className="font-mono text-xs text-blue-600 hover:underline shrink-0"
+                                className="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline shrink-0"
                             >
                                 {l.issueKey}
                             </button>
-                            <span className="truncate text-slate-700">{l.title}</span>
+                            <span className="truncate text-slate-800 dark:text-slate-200 flex-1">{l.title}</span>
                             <button
                                 onClick={() => delMut.mutate(l.id)}
-                                className="ml-auto text-slate-400 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                className="ml-auto text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs opacity-70 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0 p-1"
+                                aria-label={`Remove link to ${l.issueKey}`}
                             >
                                 ✕
                             </button>
@@ -726,22 +742,23 @@ function AttachmentsSection({ issueKey }) {
             {attachments.length > 0 && (
                 <div className="space-y-2 mb-3">
                     {attachments.map((a) => (
-                        <div key={a.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 rounded p-2 text-sm">
+                        <div key={a.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 text-sm border border-slate-200/60 dark:border-slate-700">
                             <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-slate-400 text-base">📎</span>
+                                <span className="text-slate-400 text-base" aria-hidden="true">📎</span>
                                 <button
                                     onClick={() => downloadAttachment(a.id, a.filename)}
-                                    className="text-slate-800 hover:text-blue-600 hover:underline truncate"
+                                    className="text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate font-medium text-left"
                                     title={a.filename}
                                 >
                                     {a.filename}
                                 </button>
-                                <span className="text-xs text-slate-400 shrink-0">{formatSize(a.sizeBytes)}</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">{formatSize(a.sizeBytes)}</span>
                             </div>
                             <button
                                 onClick={() => deleteMut.mutate(a.id)}
-                                className="text-slate-400 hover:text-red-600 text-xs ml-2 shrink-0"
-                                title="Delete"
+                                className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 text-xs ml-2 shrink-0 p-1 rounded hover:bg-slate-200/50 dark:hover:bg-slate-600/50 transition-colors"
+                                title="Delete attachment"
+                                aria-label={`Delete attachment ${a.filename}`}
                             >
                                 ✕
                             </button>
@@ -927,13 +944,13 @@ function ActivitySection({ issueKey }) {
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                 Activity
             </div>
-            <ul className="text-xs text-slate-600 space-y-1">
+            <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5">
                 {activity.slice().reverse().map((a) => (
-                    <li key={a.id}>
-                        <span className="font-medium text-slate-800">{a.actorUsername || "system"}</span>
+                    <li key={a.id} className="leading-relaxed">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{a.actorUsername || "system"}</span>
                         {" "}
                         {renderActivity(a)}
-                        <span className="text-slate-400"> · {new Date(a.at).toLocaleString()}</span>
+                        <span className="text-slate-400 dark:text-slate-500"> · {new Date(a.at).toLocaleString()}</span>
                     </li>
                 ))}
             </ul>
@@ -1167,6 +1184,7 @@ function TimeTrackingSection({ issueKey, issue, onUpdateEstimate }) {
         mutationFn: (body) => logTime(issueKey, body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["timeLogs", issueKey] });
+            qc.invalidateQueries({ queryKey: ["timeReport"] });
             setLogging(false);
             setForm({ hours: "", mins: "", description: "" });
             toast.success("Time logged");
@@ -1178,6 +1196,7 @@ function TimeTrackingSection({ issueKey, issue, onUpdateEstimate }) {
         mutationFn: (id) => deleteTimeLog(issueKey, id),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["timeLogs", issueKey] });
+            qc.invalidateQueries({ queryKey: ["timeReport"] });
             toast.success("Log removed");
         },
     });
@@ -1194,7 +1213,7 @@ function TimeTrackingSection({ issueKey, issue, onUpdateEstimate }) {
             {/* Progress bar */}
             {estimate > 0 && (
                 <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-0.5">
+                    <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">
                         <span>{formatMinutes(totalMinutes)} logged</span>
                         <span>{formatMinutes(estimate)} est.</span>
                     </div>
@@ -1207,12 +1226,12 @@ function TimeTrackingSection({ issueKey, issue, onUpdateEstimate }) {
                 </div>
             )}
             {estimate === 0 && totalMinutes > 0 && (
-                <div className="text-xs text-slate-600">{formatMinutes(totalMinutes)} logged</div>
+                <div className="text-xs text-slate-700 dark:text-slate-300 font-medium">{formatMinutes(totalMinutes)} logged</div>
             )}
 
             {/* Estimate input */}
-            <div className="flex items-center gap-1">
-                <span className="text-[10px] text-slate-500">Est:</span>
+            <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Est:</span>
                 <input
                     type="number"
                     min={0}
@@ -1222,54 +1241,56 @@ function TimeTrackingSection({ issueKey, issue, onUpdateEstimate }) {
                         const v = e.target.value === "" ? 0 : Number(e.target.value);
                         if (v !== estimate) onUpdateEstimate(v);
                     }}
-                    className="w-16 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-1.5 py-0.5 text-xs"
+                    className="w-16 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded px-1.5 py-0.5 text-xs"
                 />
                 <span className="text-[10px] text-slate-400">min</span>
             </div>
 
             {/* Log time */}
             {logging ? (
-                <form onSubmit={handleLog} className="space-y-1">
-                    <div className="flex gap-1">
+                <form onSubmit={handleLog} className="space-y-1.5 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                    <div className="flex gap-1.5 items-center">
                         <input type="number" min={0} placeholder="h" value={form.hours}
                             onChange={(e) => setForm({ ...form, hours: e.target.value })}
-                            className="w-12 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-1.5 py-0.5 text-xs" />
-                        <span className="text-xs text-slate-400 self-center">h</span>
+                            className="w-12 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded px-1.5 py-0.5 text-xs" />
+                        <span className="text-xs text-slate-500 dark:text-slate-400 self-center">h</span>
                         <input type="number" min={0} max={59} placeholder="m" value={form.mins}
                             onChange={(e) => setForm({ ...form, mins: e.target.value })}
-                            className="w-12 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-1.5 py-0.5 text-xs" />
-                        <span className="text-xs text-slate-400 self-center">m</span>
+                            className="w-12 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded px-1.5 py-0.5 text-xs" />
+                        <span className="text-xs text-slate-500 dark:text-slate-400 self-center">m</span>
                     </div>
                     <input placeholder="What did you work on?" value={form.description}
                         onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-1.5 py-0.5 text-xs" />
-                    <div className="flex gap-1">
+                        className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 rounded px-2 py-1 text-xs" />
+                    <div className="flex gap-1.5">
                         <button disabled={logMut.isPending}
-                            className="px-2 py-0.5 bg-slate-900 dark:bg-slate-600 text-white text-xs rounded hover:bg-slate-800 dark:hover:bg-slate-500 disabled:opacity-50">
-                            Log
+                            className="px-2.5 py-1 bg-slate-900 dark:bg-blue-600 text-white text-xs font-medium rounded hover:bg-slate-800 dark:hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                            {logMut.isPending ? "Logging…" : "Log"}
                         </button>
                         <button type="button" onClick={() => setLogging(false)}
-                            className="px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 rounded">
+                            className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors">
                             Cancel
                         </button>
                     </div>
                 </form>
             ) : (
                 <button onClick={() => setLogging(true)}
-                    className="text-xs text-slate-600 hover:text-slate-900 underline">
+                    className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline">
                     + Log time
                 </button>
             )}
 
             {/* Recent logs */}
             {logs.length > 0 && (
-                <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                <div className="space-y-1 max-h-24 overflow-y-auto pt-1">
                     {logs.slice(0, 5).map((l) => (
-                        <div key={l.id} className="flex items-center text-[10px] text-slate-500 group gap-1">
-                            <span className="font-medium text-slate-700">{formatMinutes(l.minutes)}</span>
-                            <span className="truncate">{l.description || l.username}</span>
+                        <div key={l.id} className="flex items-center text-[11px] text-slate-600 dark:text-slate-400 group gap-1.5 p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{formatMinutes(l.minutes)}</span>
+                            <span className="truncate flex-1">{l.description || l.username}</span>
                             <button onClick={() => delMut.mutate(l.id)}
-                                className="ml-auto opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 shrink-0">
+                                className="opacity-70 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-600 dark:hover:text-red-400 shrink-0 p-0.5 rounded"
+                                title="Remove time log"
+                                aria-label="Remove time log">
                                 ✕
                             </button>
                         </div>

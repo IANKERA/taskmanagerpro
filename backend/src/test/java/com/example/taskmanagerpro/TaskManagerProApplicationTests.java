@@ -48,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -1018,6 +1019,110 @@ class TaskManagerProApplicationTests {
         String bobHash = jdbcTemplate.queryForObject(
                 "SELECT password FROM users WHERE username = ?", String.class, bob);
         assertTrue(passwordEncoder.matches("BobPass123!", bobHash));
+    }
+
+    @Test
+    void deleteProjectEndpointDeletesProjectAndCascades() throws Exception {
+        ProjectFixture p = createProject("ADMIN");
+        long taskId = createTask(p, "task-to-delete", null, null);
+        Path testFile = Files.writeString(UPLOAD_ROOT.resolve(UUID.randomUUID().toString()), "attachment data");
+        createAttachment(taskId, p.userId(), testFile);
+        assertEquals(1, countTask(taskId));
+
+        ProjectFixture outsider = createProject("ADMIN");
+        String outsiderToken = jwtService.generateToken(outsider.username());
+
+        // Non-member or non-admin cannot delete
+        mockMvc.perform(delete("/api/projects/" + p.projectKey())
+                        .header("Authorization", "Bearer " + outsiderToken))
+                .andExpect(status().isForbidden());
+
+        // Project ADMIN can delete
+        String adminToken = jwtService.generateToken(p.username());
+        mockMvc.perform(delete("/api/projects/" + p.projectKey())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNoContent());
+
+        // Verify project, task, and attachments are deleted by ON DELETE CASCADE
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM projects WHERE id = ?", Integer.class, p.projectId()));
+        assertEquals(0, countTask(taskId));
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM project_memberships WHERE project_id = ?", Integer.class, p.projectId()));
+
+        // Outbox cleanup was enqueued for the attachment
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM attachment_cleanup_outbox WHERE storage_path = ?",
+                Integer.class, testFile.toString()));
+    }
+
+    @Test
+    void timeReportReturnsLoggedEntriesForProjectAndExportsCsv() throws Exception {
+        ProjectFixture p = createProject("ADMIN");
+        long taskId = createTask(p, "time-task", null, null);
+        String issueKey = p.projectKey() + "-time-task";
+
+        long memberId = createUser("timemember");
+        String memberUsername = username(memberId);
+        jdbcTemplate.update(
+                "INSERT INTO project_memberships(project_id, user_id, project_role) VALUES (?, ?, 'MEMBER')",
+                p.projectId(), memberId);
+
+        String adminToken = jwtService.generateToken(p.username());
+        String memberToken = jwtService.generateToken(memberUsername);
+
+        ProjectFixture outsider = createProject("ADMIN");
+        String outsiderToken = jwtService.generateToken(outsider.username());
+
+        // Member logs 90 minutes
+        mockMvc.perform(post("/api/issues/" + issueKey + "/time-logs")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"minutes\":90,\"description\":\"Worked on backend feature\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.minutes").value(90))
+                .andExpect(jsonPath("$.username").value(memberUsername));
+
+        // Admin logs 45 minutes
+        mockMvc.perform(post("/api/issues/" + issueKey + "/time-logs")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"minutes\":45,\"description\":\"Reviewed backend code\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.minutes").value(45))
+                .andExpect(jsonPath("$.username").value(p.username()));
+
+        // Outsider cannot access time report
+        mockMvc.perform(get("/api/projects/" + p.projectKey() + "/time-report")
+                        .header("Authorization", "Bearer " + outsiderToken))
+                .andExpect(status().isForbidden());
+
+        // Member accesses time report
+        mockMvc.perform(get("/api/projects/" + p.projectKey() + "/time-report")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalMinutes").value(135))
+                .andExpect(jsonPath("$.totalEntries").value(2))
+                .andExpect(jsonPath("$.entries").isArray())
+                .andExpect(jsonPath("$.entries.length()").value(2))
+                .andExpect(jsonPath("$.byUser.length()").value(2))
+                .andExpect(jsonPath("$.byUser[0].username").value(memberUsername))
+                .andExpect(jsonPath("$.byUser[0].minutes").value(90))
+                .andExpect(jsonPath("$.byUser[1].username").value(p.username()))
+                .andExpect(jsonPath("$.byUser[1].minutes").value(45))
+                .andExpect(jsonPath("$.byIssue[0].issueKey").value(issueKey))
+                .andExpect(jsonPath("$.byIssue[0].minutes").value(135));
+
+        // Member exports CSV
+        mockMvc.perform(get("/api/projects/" + p.projectKey() + "/time-report/export")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    String csv = result.getResponse().getContentAsString();
+                    assertTrue(csv.startsWith("Issue Key,Issue Title,User,Minutes,Hours,Description,Date"));
+                    assertTrue(csv.contains("90,1.5,Worked on backend feature"));
+                    assertTrue(csv.contains("45,0.8,Reviewed backend code"));
+                });
     }
 
     private void assertTimestampColumn(String columnName) {

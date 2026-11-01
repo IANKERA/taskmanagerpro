@@ -71,7 +71,7 @@ public class TimeReportController {
 
         // By day (last 30 days)
         r.byDay = logs.stream()
-                .filter(tl -> tl.getLoggedAt() != null && tl.getLoggedAt().isAfter(LocalDate.now().minusDays(30)))
+                .filter(tl -> tl.getLoggedAt() != null && !tl.getLoggedAt().isBefore(LocalDate.now().minusDays(30)))
                 .collect(Collectors.groupingBy(
                         TimeLog::getLoggedAt,
                         Collectors.summingInt(TimeLog::getMinutes)))
@@ -91,13 +91,21 @@ public class TimeReportController {
         StringBuilder csv = new StringBuilder();
         csv.append("Issue Key,Issue Title,User,Minutes,Hours,Description,Date\n");
         for (TimeLog tl : logs) {
-            csv.append(CsvUtils.escape(tl.getTask().getIssueKey())).append(",");
-            csv.append(CsvUtils.escape(tl.getTask().getTitle())).append(",");
-            csv.append(CsvUtils.escape(tl.getUser().getUsername())).append(",");
-            csv.append(tl.getMinutes()).append(",");
-            csv.append(String.format("%.1f", tl.getMinutes() / 60.0)).append(",");
-            csv.append(CsvUtils.escape(tl.getDescription())).append(",");
-            csv.append(tl.getLoggedAt()).append("\n");
+            String issueKey = (tl.getTask() != null && tl.getTask().getIssueKey() != null) ? tl.getTask().getIssueKey() : "";
+            String issueTitle = (tl.getTask() != null && tl.getTask().getTitle() != null) ? tl.getTask().getTitle() : "";
+            String username = (tl.getUser() != null && tl.getUser().getUsername() != null) ? tl.getUser().getUsername() : "";
+            int minutes = tl.getMinutes();
+            String hoursFormatted = String.format(Locale.ROOT, "%.1f", minutes / 60.0);
+            String desc = tl.getDescription() != null ? tl.getDescription() : "";
+            String loggedDate = tl.getLoggedAt() != null ? tl.getLoggedAt().toString() : "";
+
+            csv.append(CsvUtils.escape(issueKey)).append(",");
+            csv.append(CsvUtils.escape(issueTitle)).append(",");
+            csv.append(CsvUtils.escape(username)).append(",");
+            csv.append(minutes).append(",");
+            csv.append(hoursFormatted).append(",");
+            csv.append(CsvUtils.escape(desc)).append(",");
+            csv.append(loggedDate).append("\n");
         }
 
         return ResponseEntity.ok()

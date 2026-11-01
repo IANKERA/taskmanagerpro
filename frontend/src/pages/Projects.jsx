@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { listProjects, createProject, archiveProject, unarchiveProject, deleteProject } from "../api/projects";
+import DeleteProjectModal from "../components/DeleteProjectModal";
 
 function useFavorites() {
     const [favs, setFavs] = useState(() => {
@@ -103,7 +104,7 @@ export default function Projects() {
                 </button>
                 {p.archived && (
                     <button
-                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(p.key); }}
+                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(p); }}
                         className="text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-red-500 text-xs transition-all"
                         title="Delete project permanently"
                     >
@@ -188,29 +189,12 @@ export default function Projects() {
                 </div>
             )}
             {confirmDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                    <div className="mx-4 w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-slate-800 sm:p-6">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Delete project?</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                            This will permanently delete <strong>{confirmDelete}</strong> and all its issues, comments, and data. This cannot be undone.
-                        </p>
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setConfirmDelete(null)}
-                                className="px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => deleteMut.mutate(confirmDelete)}
-                                disabled={deleteMut.isPending}
-                                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                            >
-                                {deleteMut.isPending ? "Deleting…" : "Delete permanently"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <DeleteProjectModal
+                    project={typeof confirmDelete === "string" ? { key: confirmDelete, name: confirmDelete } : confirmDelete}
+                    isOpen={Boolean(confirmDelete)}
+                    onClose={() => setConfirmDelete(null)}
+                    onSuccess={() => setConfirmDelete(null)}
+                />
             )}
         </div>
     );

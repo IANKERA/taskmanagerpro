@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import DeleteProjectModal from "../components/DeleteProjectModal";
 import {
     listMembers, addMember, listLabels, createLabel, deleteLabel,
     getProject, updateProject,
@@ -33,6 +34,7 @@ export default function ProjectSettings() {
             <RecurringRulesSection projectKey={projectKey} />
             <WorkflowRulesSection projectKey={projectKey} />
             <ImportExportSection projectKey={projectKey} />
+            <DangerZoneSection projectKey={projectKey} />
         </div>
     );
 }
@@ -963,6 +965,48 @@ function ImportExportSection({ projectKey }) {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                 CSV format: Title, Description, Type, Priority, Assignee, Due Date (YYYY-MM-DD). First row must be headers.
             </p>
+        </section>
+    );
+}
+
+function DangerZoneSection({ projectKey }) {
+    const navigate = useNavigate();
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const { data: project } = useQuery({
+        queryKey: ["project", projectKey],
+        queryFn: () => getProject(projectKey),
+    });
+
+    if (!project) return null;
+
+    return (
+        <section className="border border-red-200 dark:border-red-900/60 rounded-xl p-5 bg-red-50/20 dark:bg-red-950/10 space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
+                Danger Zone
+            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                    <p className="font-medium text-slate-900 dark:text-white">Delete this project</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Once you delete a project, there is no going back. All issues, sprints, time entries, and data are permanently removed.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(true)}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg shrink-0 transition-colors"
+                >
+                    Delete Project
+                </button>
+            </div>
+            {showDeleteModal && (
+                <DeleteProjectModal
+                    project={project}
+                    isOpen={showDeleteModal}
+                    onClose={() => setShowDeleteModal(false)}
+                    onSuccess={() => navigate("/projects")}
+                />
+            )}
         </section>
     );
 }

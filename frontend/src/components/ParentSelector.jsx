@@ -105,11 +105,11 @@ export default function ParentSelector({
     return (
         <div className="relative w-full" ref={dropdownRef}>
             {value ? (
-                <div className="flex items-center justify-between gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-2.5 py-1.5 text-xs">
+                <div className="flex items-center justify-between gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700/90 px-2.5 py-1.5 text-xs">
                     <div className="flex items-center gap-1.5 min-w-0">
                         {selectedIssue?.issueType && (
                             <span
-                                className={`px-1 py-0.2 rounded text-[10px] font-semibold uppercase shrink-0 ${
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${
                                     TYPE_BADGES[selectedIssue.issueType]?.bg || "bg-slate-100 text-slate-700"
                                 }`}
                             >
@@ -120,7 +120,7 @@ export default function ParentSelector({
                             {value}
                         </span>
                         {selectedIssue?.title && (
-                            <span className="truncate text-slate-700 dark:text-slate-200">
+                            <span className="truncate text-slate-800 dark:text-slate-100 font-medium">
                                 {selectedIssue.title}
                             </span>
                         )}
@@ -130,7 +130,7 @@ export default function ParentSelector({
                             <button
                                 type="button"
                                 onClick={() => setOpen((prev) => !prev)}
-                                className="text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline"
+                                className="text-[11px] text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white underline font-medium"
                                 aria-label="Change parent"
                             >
                                 Change
@@ -138,7 +138,7 @@ export default function ParentSelector({
                             <button
                                 type="button"
                                 onClick={handleClear}
-                                className="rounded p-0.5 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-600 dark:hover:text-slate-200"
+                                className="rounded p-0.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                                 aria-label="Remove parent"
                                 title="Remove parent"
                             >
@@ -152,7 +152,7 @@ export default function ParentSelector({
                     type="button"
                     disabled={disabled}
                     onClick={() => setOpen((prev) => !prev)}
-                    className="w-full text-left rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="w-full text-left rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700/80 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                     aria-haspopup="listbox"
                     aria-expanded={open}
                 >
@@ -173,7 +173,7 @@ export default function ParentSelector({
                             placeholder="Search by key or title…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             aria-label="Search parent issue"
                         />
                     </div>
@@ -211,14 +211,14 @@ export default function ParentSelector({
                                         onClick={() => handleSelect(candidate.issueKey)}
                                         className={`w-full rounded px-2 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${
                                             isSelected
-                                                ? "bg-blue-50 dark:bg-blue-900/30 font-medium"
+                                                ? "bg-blue-50 dark:bg-blue-900/30 font-medium text-blue-900 dark:text-blue-200"
                                                 : "text-slate-800 dark:text-slate-200"
                                         }`}
                                         role="option"
                                         aria-selected={isSelected}
                                     >
                                         <span
-                                            className={`px-1 py-0.2 rounded text-[10px] font-semibold uppercase shrink-0 ${typeInfo.bg}`}
+                                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${typeInfo.bg}`}
                                         >
                                             {typeInfo.label}
                                         </span>

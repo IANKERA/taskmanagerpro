@@ -12,6 +12,7 @@ import {
 } from "../../api/projects";
 import { fetchAdminUsers } from "../../api/admin";
 import { formatApiError } from "../../api/errorMessage";
+import DeleteProjectModal from "../../components/DeleteProjectModal";
 
 export default function ProjectAdmin() {
     const qc = useQueryClient();
@@ -19,6 +20,7 @@ export default function ProjectAdmin() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [selectedProjectKey, setSelectedProjectKey] = useState(null);
+    const [projectToDelete, setProjectToDelete] = useState(null);
 
     const {
         data: projects = [],
@@ -266,6 +268,13 @@ export default function ProjectAdmin() {
                                                             Archive
                                                         </button>
                                                     )}
+
+                                                    <button
+                                                        onClick={() => setProjectToDelete(p)}
+                                                        className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                                    >
+                                                        Delete
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -282,6 +291,19 @@ export default function ProjectAdmin() {
                 <ProjectMemberModal
                     project={selectedProject}
                     onClose={() => setSelectedProjectKey(null)}
+                />
+            )}
+
+            {/* Project Deletion Modal */}
+            {projectToDelete && (
+                <DeleteProjectModal
+                    project={projectToDelete}
+                    isOpen={Boolean(projectToDelete)}
+                    onClose={() => setProjectToDelete(null)}
+                    onSuccess={() => {
+                        setProjectToDelete(null);
+                        qc.invalidateQueries({ queryKey: ["projects"] });
+                    }}
                 />
             )}
         </div>

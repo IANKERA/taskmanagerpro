@@ -236,6 +236,64 @@ class ProjectServiceAuthorizationTests {
         verify(membershipRepository, never()).findByUserIdWithProjectAndLead(any());
     }
 
+    @Test
+    void authorizedProjectAdminCanDeleteProject() {
+        stubCurrentUser();
+        Project project = Project.builder().id(7L).key("SECRET").build();
+        when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any())).thenReturn(true);
+
+        projectService.deleteProject("SECRET");
+
+        verify(attachmentCleanupService).enqueueForProject(7L);
+        verify(projectRepository).delete(project);
+    }
+
+    @Test
+    void globalAdminCanDeleteProjectWithoutProjectMembership() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        "globalAdmin", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+
+        Project project = Project.builder().id(7L).key("SECRET").build();
+        when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
+
+        projectService.deleteProject("SECRET");
+
+        verify(attachmentCleanupService).enqueueForProject(7L);
+        verify(projectRepository).delete(project);
+        verify(membershipRepository, never()).existsByProjectAndUserWithRoleIn(any(), any(), any());
+    }
+
+    @Test
+    void nonAdminCannotDeleteProject() {
+        stubCurrentUser();
+        Project project = Project.builder().id(7L).key("SECRET").build();
+        when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
+        // First check in getByKey allows VIEWER/MEMBER/ADMIN; but second check in deleteProject requires ADMIN
+        // Let's test when user is not an ADMIN (e.g. existsByProject returns false for ADMIN)
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any())).thenReturn(false);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> projectService.deleteProject("SECRET"));
+
+        assertEquals(403, ex.getStatusCode().value());
+        verify(projectRepository, never()).delete(any());
+        verify(attachmentCleanupService, never()).enqueueForProject(any());
+    }
+
+    @Test
+    void deleteProjectThrowsNotFoundForNonExistentKey() {
+        when(projectRepository.findByKey("NONEXISTENT")).thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> projectService.deleteProject("NONEXISTENT"));
+
+        assertEquals(404, ex.getStatusCode().value());
+        verify(projectRepository, never()).delete(any());
+        verify(attachmentCleanupService, never()).enqueueForProject(any());
+    }
+
     private ProjectMembership membership(Long userId, String username, ProjectRole role) {
         User user = new User();
         user.setId(userId);

@@ -4,12 +4,15 @@ import com.example.taskmanagerpro.dto.Mapper;
 import com.example.taskmanagerpro.dto.UserDTO;
 import com.example.taskmanagerpro.model.NotificationPreference;
 import com.example.taskmanagerpro.model.User;
+import com.example.taskmanagerpro.model.enums.Role;
 import com.example.taskmanagerpro.service.NotificationService;
 import com.example.taskmanagerpro.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
@@ -39,13 +42,15 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Get all users
+    // Get all users (admin only)
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public List<UserDTO> getAllUsers() {
         return Mapper.toUserDTOList(userService.getAllUsers());
     }
 
-    // Get user by ID
+    // Get user by ID (admin only)
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         return userService.getUserById(id)
@@ -57,12 +62,23 @@ public class UserController {
     // M1: POST /api/users removed — user creation goes through /api/auth/register, which hashes the password.
     // The old endpoint stored the password in plaintext, which was a security hole.
 
-    // Update user (admin only — secured by SecurityConfig). Password updates go through reset-password endpoints.
+    // Update user (admin only). Password updates go through reset-password endpoints.
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody User user) {
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         return userService.getUserById(id)
                 .map(existing -> {
-                    if (user.getUsername() != null) existing.setUsername(user.getUsername());
+                    // Prevent self-demotion to avoid locking out the admin
+                    if (existing.getUsername().equals(currentUsername) && user.getRole() != null && user.getRole() != Role.ROLE_ADMIN) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot revoke your own admin role");
+                    }
+                    if (user.getUsername() != null && !user.getUsername().isBlank() && !user.getUsername().equals(existing.getUsername())) {
+                        if (userService.existsByUsername(user.getUsername())) {
+                            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already taken: " + user.getUsername());
+                        }
+                        existing.setUsername(user.getUsername());
+                    }
                     if (user.getEmail() != null) existing.setEmail(user.getEmail());
                     if (user.getRole() != null) existing.setRole(user.getRole());
                     // Intentionally NOT updating password here — use /reset-password endpoints which hash properly.
@@ -72,7 +88,7 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Reset-password
+    // Reset-password (admin only)
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/reset-password")
     public ResponseEntity<?> resetPassword(
@@ -91,7 +107,6 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-
 
     // DTO class for password request
     public static class PasswordResetRequest {
@@ -129,8 +144,6 @@ public class UserController {
         }
     }
 
-
-
     public static class SelfPasswordResetRequest {
         @NotBlank
         private String oldPassword;
@@ -152,7 +165,6 @@ public class UserController {
             this.newPassword = newPassword;
         }
     }
-
 
     /** Update current user's email. */
     @PatchMapping("/me/email")
@@ -200,10 +212,24 @@ public class UserController {
         ));
     }
 
-    // Delete user
+    // Delete user (admin only)
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        User target = userService.getUserById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (target.getUsername().equals(currentUsername)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot delete your own admin account");
+        }
+        if (target.getRole() == Role.ROLE_ADMIN && userService.countAdmins() <= 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot delete the only remaining admin");
+        }
+        try {
+            userService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete user: user has associated issues or project records");
+        }
     }
 }

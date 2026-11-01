@@ -1,6 +1,7 @@
 package com.example.taskmanagerpro.repository;
 
 import com.example.taskmanagerpro.model.User;
+import com.example.taskmanagerpro.model.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -23,4 +24,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Fetch all users with tasks eagerly loaded
     @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.tasks")
     java.util.List<User> findAllWithTasks();
+
+    long countByRole(Role role);
 }

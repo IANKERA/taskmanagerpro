@@ -29,6 +29,9 @@ export const deleteLabel = (key, labelId) =>
 export const addMember = (key, body) =>
     api.post(`/api/projects/${key}/members`, body).then((r) => r.data);
 
+export const removeMember = (key, username) =>
+    api.delete(`/api/projects/${key}/members/${username}`).then(() => true);
+
 export const archiveProject = (key) =>
     api.post(`/api/projects/${key}/archive`).then((r) => r.data);
 

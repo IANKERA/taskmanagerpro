@@ -16,6 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -129,6 +130,110 @@ class ProjectServiceAuthorizationTests {
                 () -> projectService.requireAssignableMember(7L, 9L));
 
         assertEquals(400, exception.getStatusCode().value());
+    }
+
+    @Test
+    void authorizedAdminCanRemoveMember() {
+        stubCurrentUser();
+        Project project = new Project();
+        project.setId(7L);
+        User bob = new User();
+        bob.setId(2L);
+        bob.setUsername("bob");
+
+        when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any()))
+                .thenReturn(true);
+        when(userRepository.findByUsername("bob")).thenReturn(Optional.of(bob));
+
+        ProjectMembership pm = ProjectMembership.builder().project(project).user(bob).projectRole(ProjectRole.MEMBER).build();
+        when(membershipRepository.findByProjectIdAndUserId(7L, 2L)).thenReturn(Optional.of(pm));
+
+        projectService.removeMember("SECRET", "bob");
+
+        verify(membershipRepository).delete(pm);
+    }
+
+    @Test
+    void cannotRemoveProjectLeadFromMembership() {
+        stubCurrentUser();
+        User lead = new User();
+        lead.setId(10L);
+        lead.setUsername("leadUser");
+
+        Project project = new Project();
+        project.setId(7L);
+        project.setLead(lead);
+
+        when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any()))
+                .thenReturn(true);
+        when(userRepository.findByUsername("leadUser")).thenReturn(Optional.of(lead));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> projectService.removeMember("SECRET", "leadUser"));
+
+        assertEquals(400, ex.getStatusCode().value());
+        verify(membershipRepository, never()).delete(any());
+    }
+
+    @Test
+    void nonAdminCannotRemoveMember() {
+        stubCurrentUser();
+        Project project = new Project();
+        project.setId(7L);
+
+        when(projectRepository.findByKey("SECRET")).thenReturn(Optional.of(project));
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any()))
+                .thenReturn(false);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> projectService.removeMember("SECRET", "bob"));
+
+        assertEquals(403, ex.getStatusCode().value());
+        verify(membershipRepository, never()).delete(any());
+    }
+
+    @Test
+    void authorizedAdminCanChangeProjectLead() {
+        stubCurrentUser();
+        Project project = new Project();
+        project.setId(7L);
+
+        User newLead = new User();
+        newLead.setId(5L);
+        newLead.setUsername("charlie");
+
+        when(membershipRepository.existsByProjectAndUserWithRoleIn(any(), any(), any()))
+                .thenReturn(true);
+        when(userRepository.findByUsername("charlie")).thenReturn(Optional.of(newLead));
+        when(membershipRepository.findByProjectIdAndUserId(7L, 5L)).thenReturn(Optional.empty());
+
+        projectService.changeLead(project, "charlie");
+
+        assertEquals(newLead, project.getLead());
+        ArgumentCaptor<ProjectMembership> captor = ArgumentCaptor.forClass(ProjectMembership.class);
+        verify(membershipRepository).save(captor.capture());
+        assertEquals(ProjectRole.ADMIN, captor.getValue().getProjectRole());
+        assertEquals(newLead, captor.getValue().getUser());
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    void globalAdminListsAllProjects() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        "adminUser", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+
+        Project p1 = Project.builder().id(1L).key("P1").build();
+        Project p2 = Project.builder().id(2L).key("P2").build();
+        when(projectRepository.findAllWithLead()).thenReturn(List.of(p1, p2));
+
+        List<Project> result = projectService.listForCurrentUser();
+
+        assertEquals(2, result.size());
+        verify(projectRepository).findAllWithLead();
+        verify(membershipRepository, never()).findByUserIdWithProjectAndLead(any());
     }
 
     private ProjectMembership membership(Long userId, String username, ProjectRole role) {

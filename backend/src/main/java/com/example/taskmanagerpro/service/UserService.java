@@ -44,7 +44,6 @@ public class UserService {
         userRepository.save(user);
     }
 
-
     public boolean checkPassword(User user, String rawPassword) {
         return passwordEncoder.matches(rawPassword, user.getPassword());
     }
@@ -97,7 +96,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-
     // Delete user
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
@@ -117,4 +115,7 @@ public class UserService {
         return userRepository.findByUsername(username);
     }
 
+    public long countAdmins() {
+        return userRepository.countByRole(Role.ROLE_ADMIN);
+    }
 }

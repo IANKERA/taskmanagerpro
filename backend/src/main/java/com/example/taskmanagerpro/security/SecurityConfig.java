@@ -69,7 +69,8 @@ public class SecurityConfig {
                         // bodies + status codes get rewritten to 403. Allow the error dispatcher through.
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/users/me", "/api/users/me/**").authenticated()
-                        .requestMatchers("/api/users/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users", "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/tasks/**").authenticated()
                         .anyRequest().authenticated()
                 )

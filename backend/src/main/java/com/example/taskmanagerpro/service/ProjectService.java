@@ -46,6 +46,9 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<Project> listForCurrentUser() {
+        if (isCurrentUserGlobalAdmin()) {
+            return projectRepo.findAllWithLead();
+        }
         Long uid = currentUser().getId();
         return membershipRepo.findByUserIdWithProjectAndLead(uid).stream()
                 .map(ProjectMembership::getProject)
@@ -126,6 +129,51 @@ public class ProjectService {
         return membershipRepo.save(pm);
     }
 
+    @Transactional
+    public void removeMember(String projectKey, String username) {
+        Project p = getByKey(projectKey);
+        requireProjectRole(p.getId(), ProjectRole.ADMIN);
+
+        User u = userRepo.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "User not found: " + username));
+
+        if (p.getLead() != null && p.getLead().getId().equals(u.getId())) {
+            throw new ResponseStatusException(BAD_REQUEST, "Cannot remove project lead from membership. Reassign the project lead first.");
+        }
+
+        ProjectMembership pm = membershipRepo.findByProjectIdAndUserId(p.getId(), u.getId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "User is not a member of this project"));
+
+        membershipRepo.delete(pm);
+    }
+
+    @Transactional
+    public void changeLead(Project p, String leadUsername) {
+        requireProjectRole(p.getId(), ProjectRole.ADMIN);
+        if (leadUsername == null || leadUsername.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Project lead username cannot be empty");
+        }
+        User newLead = userRepo.findByUsername(leadUsername)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "User not found: " + leadUsername));
+
+        // Ensure the new lead is a member of the project with ADMIN role
+        Optional<ProjectMembership> existing = membershipRepo.findByProjectIdAndUserId(p.getId(), newLead.getId());
+        if (existing.isEmpty()) {
+            ProjectMembership pm = ProjectMembership.builder()
+                    .project(p)
+                    .user(newLead)
+                    .projectRole(ProjectRole.ADMIN)
+                    .build();
+            membershipRepo.save(pm);
+        } else if (existing.get().getProjectRole() != ProjectRole.ADMIN) {
+            existing.get().setProjectRole(ProjectRole.ADMIN);
+            membershipRepo.save(existing.get());
+        }
+
+        p.setLead(newLead);
+        projectRepo.save(p);
+    }
+
     @Transactional(readOnly = true)
     public List<ProjectMembership> listMembers(String projectKey) {
         Project p = getByKey(projectKey);
@@ -185,6 +233,7 @@ public class ProjectService {
     }
 
     private boolean isCurrentUserGlobalAdmin() {
+        if (SecurityContextHolder.getContext().getAuthentication() == null) return false;
         return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }

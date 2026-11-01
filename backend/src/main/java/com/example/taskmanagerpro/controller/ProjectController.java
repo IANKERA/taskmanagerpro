@@ -93,7 +93,11 @@ public class ProjectController {
         Project p = projectService.getByKey(key);
         if (body.containsKey("name")) p.setName(body.get("name"));
         if (body.containsKey("description")) p.setDescription(body.get("description"));
-        projectService.save(p);
+        if (body.containsKey("leadUsername")) {
+            projectService.changeLead(p, body.get("leadUsername"));
+        } else {
+            projectService.save(p);
+        }
         return ProjectDTO.from(projectService.getByKey(key));
     }
 
@@ -128,5 +132,11 @@ public class ProjectController {
                 "username", m.getUser().getUsername(),
                 "projectRole", m.getProjectRole().name()
         ));
+    }
+
+    @DeleteMapping("/{key}/members/{username}")
+    public ResponseEntity<Void> removeMember(@PathVariable String key, @PathVariable String username) {
+        projectService.removeMember(key, username);
+        return ResponseEntity.noContent().build();
     }
 }

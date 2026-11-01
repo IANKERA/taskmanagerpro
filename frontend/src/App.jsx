@@ -32,6 +32,11 @@ import NotificationsPage from "./pages/NotificationsPage";
 import WorkloadPage from "./pages/WorkloadPage";
 import AuditLogPage from "./pages/AuditLogPage";
 
+// F5.1 — Core Administration
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminOverview from "./pages/admin/AdminOverview";
+import ProjectAdmin from "./pages/admin/ProjectAdmin";
+
 function App() {
     return (
         <Routes>
@@ -67,11 +72,19 @@ function App() {
                     <Route path="settings" element={<ProjectSettings />} />
                 </Route>
 
-                {/* Profile + Admin */}
+                {/* Profile */}
                 <Route path="/profile"          element={<Profile />} />
                 <Route path="/profile/settings" element={<ProfileSettings />} />
-                <Route path="/admin/users" element={<ProtectedRoute adminOnly><UserAdmin /></ProtectedRoute>} />
-                <Route path="/admin/audit-log" element={<ProtectedRoute adminOnly><AuditLogPage /></ProtectedRoute>} />
+
+                {/* F5.1 Administration */}
+                <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>}>
+                    <Route index element={<AdminOverview />} />
+                    <Route path="overview" element={<Navigate to="/admin" replace />} />
+                    <Route path="users" element={<UserAdmin />} />
+                    <Route path="projects" element={<ProjectAdmin />} />
+                    <Route path="audit-log" element={<AuditLogPage />} />
+                </Route>
+
                 {/* Legacy pages — kept available but no longer linked prominently */}
                 <Route path="/dashboard"      element={<Dashboard />} />
                 <Route path="/tasks"          element={<MyTasks />} />

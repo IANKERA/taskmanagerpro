@@ -166,9 +166,11 @@ function Sidebar({ open, onClose }) {
                 {isAdmin && (
                     <>
                         <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider mt-4 px-3">
-                            Admin
+                            Administration
                         </div>
+                        <NavLink to="/admin" end className={linkCls} onClick={onClose}>Overview</NavLink>
                         <NavLink to="/admin/users" className={linkCls} onClick={onClose}>Users</NavLink>
+                        <NavLink to="/admin/projects" className={linkCls} onClick={onClose}>Projects</NavLink>
                         <NavLink to="/admin/audit-log" className={linkCls} onClick={onClose}>Audit Log</NavLink>
                         <NavLink to="/dashboard" className={linkCls} onClick={onClose}>Dashboard</NavLink>
                         <NavLink to="/settings"  className={linkCls} onClick={onClose}>Settings</NavLink>
